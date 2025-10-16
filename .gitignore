@@ -281,6 +281,7 @@ build/
 ## ===== 기타 =====
 # 프로젝트 내부에서 임시 생성하는 파일/폴더
 tmp/
+logs/
 test/
 data/
 output/
