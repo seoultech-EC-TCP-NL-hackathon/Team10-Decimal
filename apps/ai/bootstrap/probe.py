@@ -1,5 +1,5 @@
 """
-하드웨어/메모리/OS 감지 유틸리티.
+하드웨어/메모리/OS 감지 유틸
 - GPU 유무, VRAM 용량, CPU 물리/논리 코어 수, RAM 용량, OS 정보 수집.
 - 모든 용량 단위는 'GiB(2^30 bytes)' 기준으로 표기.
 """
@@ -52,3 +52,37 @@ def os_info() -> dict:
         "release": platform.release(),
         "version": platform.version(),
     }
+
+def detect_hardware() -> dict:
+    """
+    시스템 전체 하드웨어 정보 통합.
+    - 모든 용량 단위는 GiB
+    반환 예시:
+    {
+      "gpu_cuda": True,
+      "gpu_vram_gib": 10.5,
+      "gpu_name": "NVIDIA RTX 4070",
+      "cpu_logical_cores": 16,
+      "cpu_physical_cores": 8,
+      "cpu_freq_ghz": 4.8,
+      "ram_gib": 31.9,
+      "os": {"system": "Windows", "release": "10", "version": "10.0.22621"}
+    }
+    """
+    hw = {}
+
+    # GPU
+    g = gpu_info()
+    hw.update(g)
+
+    # CPU
+    c = cpu_info()
+    hw.update(c)
+
+    # RAM
+    hw["ram_gib"] = ram_gib()
+
+    # OS
+    hw["os"] = os_info()
+
+    return hw
