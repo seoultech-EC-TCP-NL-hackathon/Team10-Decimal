@@ -1,0 +1,56 @@
+"""
+하드웨어/메모리/OS 감지 유틸리티.
+- GPU 유무, VRAM 용량, CPU 물리/논리 코어 수, RAM 용량, OS 정보 수집.
+- 모든 용량 단위는 'GiB(2^30 bytes)' 기준으로 표기.
+"""
+import platform
+import psutil
+
+def ram_gib() -> float:
+    """현재 시스템 RAM 용량 (GiB 단위, 소수점 한 자리까지 반올림)"""
+    total_bytes = psutil.virtual_memory().total
+    gib = total_bytes / (1024 ** 3)
+    return round(gib, 1)
+
+def cpu_info() -> dict:
+    """
+    CPU 정보:
+    - physical_cores: 실제 물리 코어 수
+    - logical_cores: 논리 코어 수 (SMT(하이퍼스레딩) 포함)
+    - freq_ghz: 현재 최대 주파수 (GHz 단위)
+    """
+    freq = psutil.cpu_freq()
+    max_freq = freq.max / 1000 if freq and freq.max else None
+    return {
+        "physical_cores": psutil.cpu_count(logical=False),
+        "logical_cores": psutil.cpu_count(logical=True),
+        "freq_ghz": round(max_freq, 2) if max_freq else None,
+    }
+
+def gpu_info() -> dict:
+    """
+    GPU 정보:
+    - cuda: CUDA 사용 가능 여부
+    - vram_gib: GPU VRAM 용량 (GiB 단위)
+    - name: GPU 이름
+    """
+    try:
+        import torch
+        has_cuda = torch.cuda.is_available()
+        vram_gib = 0.0
+        name = ""
+        if has_cuda:
+            prop = torch.cuda.get_device_properties(0)
+            vram_gib = round(prop.total_memory / (1024 ** 3), 1)
+            name = prop.name
+        return {"cuda": has_cuda, "vram_gib": vram_gib, "name": name}
+    except Exception:
+        return {"cuda": False, "vram_gib": 0.0, "name": ""}
+
+def os_info() -> dict:
+    """운영체제 이름 및 버전 반환"""
+    return {
+        "system": platform.system(),
+        "release": platform.release(),
+        "version": platform.version(),
+    }
