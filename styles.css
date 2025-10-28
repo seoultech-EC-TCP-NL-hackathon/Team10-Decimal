@@ -121,30 +121,27 @@ body {
   display: none;
 }
 
-/* ✅ 탭줄은 그대로 남겨 토글 버튼만 보이게 */
 .sidebar.mini .sidebar-tabs {
   justify-content: flex-start;
   height: 35px;
 }
 
-/* 작은 화면 예외: 미니 모드라도 사이드바는 보여주자 */
 @media (max-width: 480px) {
   .sidebar { display: none; }
-  .sidebar.mini { display: flex; } /* ✅ 미니 모드일 때는 계속 표시 */
+  .sidebar.mini { display: flex; }
 }
 
-/* 사이드바 내부용 키보드 단축키 안내 */
 .sidebar .keyboard-shortcuts {
-    position: sticky;          /* 사이드바 안 하단에 고정 느낌 */
+    position: sticky;
     bottom: 0;
     background: #2d2d2d;
     border-top: 1px solid #3d3d3d;
-    border-radius: 0;          /* 둥근 모서리 제거 */
+    border-radius: 0;
     padding: 12px;
     font-size: 12px;
     color: #9ca3af;
     z-index: 1;
-    opacity: 1;                /* 항상 보이게 */
+    opacity: 1;
 }
 
 .sidebar .keyboard-shortcuts h4 {
@@ -280,7 +277,10 @@ body {
     cursor: pointer;
     transition: background-color 0.2s ease;
     border-left: 3px solid transparent;
+    position: relative;
 }
+
+
 
 .summary-item:hover {
     background-color: #37373d;
@@ -889,8 +889,29 @@ body {
 }
 
 .summary-actions {
-    display: flex;
-    gap: 8px;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.summary-item:hover .summary-actions { opacity: 1; }
+
+.summary-actions .icon-btn {
+  background: none;
+  border: 1px solid #3c3c3c;
+  color: #bfbfbf;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.summary-actions .icon-btn:hover {
+  background: #3c3c3c;
+  color: #fff;
 }
 
 .action-btn {
@@ -1012,11 +1033,7 @@ body {
         width: 95%;
         margin: 20px;
     }
-    
-    .modal-actions {
-        flex-direction: column;
-    }
-    
+
     .summary-header {
         flex-direction: column;
         gap: 12px;
@@ -1039,6 +1056,29 @@ body {
     .tab-title {
         max-width: 80px;
     }
+}
+/* 처리 버튼 줄: 체크박스는 왼쪽, 버튼들은 오른쪽 */
+.modal-actions {
+    display: flex;
+    align-items: center;     /* 수직 가운데 정렬 */
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;         /* 폭 좁아질 때 줄바꿈 허용 (선택) */
+}
+
+.modal-actions .lang-flag {
+    margin-right: auto;      /* ← 핵심: 왼쪽으로 밀착 & 나머지를 오른쪽으로 밀기 */
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #ccc;
+    cursor: pointer;
+}
+
+.modal-actions .lang-flag input {
+    transform: scale(1.1);
+    cursor: pointer;
 }
 
 /* 요약 결과 스타일링 */

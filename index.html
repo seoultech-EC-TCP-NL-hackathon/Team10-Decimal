@@ -16,53 +16,13 @@
             <button class="sidebar-toggle-btn" onclick="toggleSidebarMini()" title="사이드바 접기/펼치기">
                 <i class="fas fa-chevron-left"></i>
             </button>
-
-            <div class="sidebar-tab active" data-panel="explorer" title="탐색기">
-                <i class="fas fa-folder"></i>
-            </div>
-            <div class="sidebar-tab" data-panel="summaries" title="요약 기록">
+            <div class="sidebar-tab active" data-panel="summaries" title="요약 기록">
                 <i class="fas fa-history"></i>
             </div>
         </div>
 
         <!-- 사이드바 패널들 -->
         <div class="sidebar-panels">
-            <!-- 탐색기 패널 -->
-            <div class="sidebar-panel active" id="explorer-panel">
-                <div class="panel-header">
-                    <h3>탐색기</h3>
-                    <button class="new-file-btn" onclick="showNewFileMenu()" title="새 파일">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <div class="panel-content">
-                    <div class="file-tree" id="fileTree">
-                        <div class="tree-node folder expanded" data-path="/">
-                            <div class="tree-node-content">
-                                <i class="fas fa-folder-open"></i>
-                                <span>강의 요약 프로젝트</span>
-                            </div>
-                            <div class="tree-children">
-                                <div class="tree-node folder" data-path="/recordings">
-                                    <div class="tree-node-content" onclick="toggleFolder(this)">
-                                        <i class="fas fa-folder"></i>
-                                        <span>녹음 파일</span>
-                                    </div>
-                                    <div class="tree-children" id="recordingsFolder"></div>
-                                </div>
-                                <div class="tree-node folder" data-path="/summaries">
-                                    <div class="tree-node-content" onclick="toggleFolder(this)">
-                                        <i class="fas fa-folder"></i>
-                                        <span>요약 파일</span>
-                                    </div>
-                                    <div class="tree-children" id="summariesFolder"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- 요약 기록 패널 -->
             <div class="sidebar-panel" id="summaries-panel">
                 <div class="panel-header">
@@ -184,10 +144,16 @@
 
                     <!-- 처리 버튼 -->
                     <div class="modal-actions">
+                        <label class="lang-flag">
+                            <input type="checkbox" id="flagKoreanOnly">
+                            한국어로 이루어진 파일입니다.
+                        </label>
+
                         <button class="summarize-btn" id="summarizeBtn" onclick="summarizeAudio()" disabled>
                             <i class="fas fa-magic"></i>
                             <span>요약 생성</span>
                         </button>
+                        
                         <button class="cancel-btn" onclick="closeRecordingModal()">
                             <span>취소</span>
                         </button>
