@@ -1,16 +1,16 @@
 """
-하드웨어 스펙 → 사용할 모델(사이즈/종류) 선택 규칙.
+하드웨어 스펙 → 사용할 모델(사이즈/종류) 선택 규칙 유틸
 - 단위는 모두 GiB 기준.
 """
 
 def pick_models(hw: dict) -> dict:
     """
-    hw: {"cuda": bool, "vram_gib": float, "ram_gib": float, ...}
+    hw: {"gpu_cuda": bool, "gpu_vram_gib": float, "cpu_ram_gib": float, ...}
     반환: {"whisper": "...", "llm_cat_repo_id": "...", ... , "diar": "..."}
     """
-    cuda = bool(hw.get("cuda"))
-    vram = float(hw.get("vram_gib", 0.0))
-    ram  = float(hw.get("ram_gib", 0.0))
+    cuda = bool(hw.get("gpu_cuda"))
+    vram = float(hw.get("gpu_vram_gib", 0.0))
+    ram  = float(hw.get("cpu_ram_gib", 0.0))
 
     if cuda and vram > 11:
         whisper = "large-v3"
