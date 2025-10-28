@@ -15,24 +15,24 @@ def ram_gib() -> float:
 def cpu_info() -> dict:
     """
     CPU 정보:
-    - physical_cores: 실제 물리 코어 수
-    - logical_cores: 논리 코어 수 (SMT(하이퍼스레딩) 포함)
-    - freq_ghz: 현재 최대 주파수 (GHz 단위)
+    - cpu_physical_cores: 실제 물리 코어 수
+    - cpu_logical_cores: 논리 코어 수 (SMT(하이퍼스레딩) 포함)
+    - cpu_freq_ghz: 현재 최대 주파수 (GHz 단위)
     """
     freq = psutil.cpu_freq()
     max_freq = freq.max / 1000 if freq and freq.max else None
     return {
-        "physical_cores": psutil.cpu_count(logical=False),
-        "logical_cores": psutil.cpu_count(logical=True),
-        "freq_ghz": round(max_freq, 2) if max_freq else None,
+        "cpu_physical_cores": psutil.cpu_count(logical=False),
+        "cpu_logical_cores": psutil.cpu_count(logical=True),
+        "cpu_freq_ghz": round(max_freq, 2) if max_freq else None,
     }
 
 def gpu_info() -> dict:
     """
     GPU 정보:
-    - cuda: CUDA 사용 가능 여부
-    - vram_gib: GPU VRAM 용량 (GiB 단위)
-    - name: GPU 이름
+    - gpu_cuda: CUDA 사용 가능 여부
+    - gpu_vram_gib: GPU VRAM 용량 (GiB 단위)
+    - gpu_name: GPU 이름
     """
     try:
         import torch
@@ -43,9 +43,9 @@ def gpu_info() -> dict:
             prop = torch.cuda.get_device_properties(0)
             vram_gib = round(prop.total_memory / (1024 ** 3), 1)
             name = prop.name
-        return {"cuda": has_cuda, "vram_gib": vram_gib, "name": name}
+        return {"gpu_cuda": has_cuda, "gpu_vram_gib": vram_gib, "gpu_name": name}
     except Exception:
-        return {"cuda": False, "vram_gib": 0.0, "name": ""}
+        return {"gpu_cuda": False, "gpu_vram_gib": 0.0, "gpu_name": ""}
 
 def os_info() -> dict:
     """운영체제 이름 및 버전 반환"""
