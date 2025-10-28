@@ -5,12 +5,12 @@
 
 def pick_models(hw: dict) -> dict:
     """
-    hw: {"gpu_cuda": bool, "gpu_vram_gib": float, "cpu_ram_gib": float, ...}
+    hw: {"gpu_cuda": bool, "gpu_vram_gib": float, "ram_gib": float, ...}
     반환: {"whisper": "...", "llm_cat_repo_id": "...", ... , "diar": "..."}
     """
     cuda = bool(hw.get("gpu_cuda"))
     vram = float(hw.get("gpu_vram_gib", 0.0))
-    ram  = float(hw.get("cpu_ram_gib", 0.0))
+    ram  = float(hw.get("ram_gib", 0.0))
 
     if cuda and vram > 11:
         whisper = "large-v3"
