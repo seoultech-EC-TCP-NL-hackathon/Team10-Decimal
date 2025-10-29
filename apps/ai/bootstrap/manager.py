@@ -1,103 +1,76 @@
-# apps/ai/bootstrap/manager.py
 """
-모델 프로비저닝 매니저
-- 하드웨어 감지 → 모델 선택 → 설치 → 구성 저장(ai.config.json)
-- 이미 구성 파일이 있으면 스킵(재설치를 원하면 force=True)
+모델 준비 관리자
 
-반영 사항:
-- probe.detect_hardware(): gpu_cuda/gpu_vram_gib/ram_gib 등 GiB 단위
-- resolve.pick_models(): whisper + (llm_cat/llm_sum + allow_pattern) + diar
-- install.install_all(): Whisper/pyannote는 모듈 캐시, LLM은 HF 기본 캐시
+동작 개요:
+1) 설정 파일(config_json)이 존재하면 로드 후 반환 (재실행 스킵)
+2) 없으면:
+   - 하드웨어 감지:    probe.detect_hardware()
+   - 모델 선택:        resolve.pick_models(hw)
+   - 모델 설치/캐시:   install.install_all(models)
+   - 결과 기록:        config_json(JSON) 저장
+
+주의:
+- 모델 설치는 HF 기본 캐시 & 각 모듈 내 캐시 사용. 별도 models_dir 사용하지 않음.
+- config_json의 'models_backend'는 'hf_cache'로 표기해 둠(문서화 목적).
 """
 
 from __future__ import annotations
 from pathlib import Path
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .probe import detect_hardware
 from .resolve import pick_models
 from .install import install_all
 
 
-def _read_config(config_json: Path) -> Optional[Dict[str, Any]]:
-    """기존 구성 파일을 읽어 dict로 반환. 없으면 None."""
-    if not config_json.exists():
-        return None
-    try:
-        return json.loads(config_json.read_text(encoding="utf-8"))
-    except Exception:
-        # 손상된 파일 등은 무시하고 재생성
-        return None
-
-
-def _write_config(config_json: Path, payload: Dict[str, Any]) -> None:
-    """구성 payload를 JSON으로 기록(들여쓰기/UTF-8)."""
-    config_json.parent.mkdir(parents=True, exist_ok=True)
-    config_json.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-
-def ensure_models_ready(
-    *,
-    models_dir: Path,           # 인터페이스 유지용 인자(Whisper/pyannote/LLM 모두 각자 캐시 사용)
-    config_json: Path,          # 예: apps/ai/ai.config.json
-    force: bool = False,        # True면 기존 구성 무시하고 재선택/재설치
-    noninteractive: bool = True # 현재는 사용 안하지만 인터페이스 유지
-) -> Dict[str, Any]:
+def ensure_models_ready(models_dir: Path | None, config_json: Path, noninteractive: bool = True) -> Dict[str, Any]:
     """
-    모델 준비 절차:
-    1) (force=False) & config 존재 → 바로 로드 후 반환
-    2) 하드웨어 감지(detect_hardware) → 모델 선택(pick_models)
-    3) 설치(install_all) → 구성 파일 저장 → 반환
+    최초 실행 시 모델 준비를 보장하고, 결과를 config_json에 기록한다.
+    - models_dir 인자는 과거 시그니처 호환용으로 받지만, 실제 설치는 HF/모듈 기본 캐시를 사용한다.
+    - config_json이 이미 있으면 로드하여 그대로 반환(멱등).
     """
-    # 0) 기존 구성 재사용
-    if not force:
-        existing = _read_config(config_json)
-        if existing:
-            print("[bootstrap] Config exists, skip installation.")
-            return existing
+    # 0) 기존 설정 존재하면 즉시 반환
+    if config_json.exists():
+        try:
+            return json.loads(config_json.read_text(encoding="utf-8"))
+        except Exception:
+            # 손상된 파일이면 새로 생성
+            pass
 
-    # 1) 하드웨어 감지 (GiB 단위/키명: gpu_cuda, gpu_vram_gib, ram_gib, cpu_* 등)
+    # 1) 하드웨어 감지 (GiB 기준 키 네이밍은 probe.detect_hardware() 결과에 따름)
     hw = detect_hardware()
-    print(f"[bootstrap] Detected hardware: {hw}")
 
-    # 2) 모델 선택 (RAM/VRAM 기준 규칙 + LLM 분리 + allow_pattern)
-    selected = pick_models(hw)  # ValueError 발생 가능(예: RAM < 8 GiB)
-    print(f"[bootstrap] Selected models: {selected}")
+    # 2) 모델 선택 (사용자 규칙 반영)
+    selected = pick_models(hw)
 
-    # 3) 설치 (Whisper/pyannote: 모듈 캐시 | LLM: HF 기본 캐시)
-    #    install_all 시그니처 유지 위해 base_dir_unused 전달하지만 내부에서 미사용
-    install_all(selected, models_dir)
+    # 3) 설치/캐시 확보 (Whisper/pyannote/LLM)
+    #    - install_all 내부에서:
+    #       * Whisper → openai-whisper 모듈로 캐시 확보
+    #       * LLM     → HF snapshot_download(기본 캐시)
+    #       * Pyannote→ pyannote.audio Pipeline.from_pretrained(캐시)
+    install_all(selected, base_dir_unused=None)
 
-    # 4) 구성 기록
+    # 4) 결과 페이로드 구성 및 기록
     payload = {
-        "hardware": hw,
-        "selected": selected,
-        # models_dir는 호환성 표시용(실제 설치는 각자 캐시), 경로 표시는 사용자 편의를 위해 남겨둠
-        "models_dir": str(models_dir),
-        "version": 1,
+        "hardware": hw,              # probe.detect_hardware() 결과 그대로
+        "selected": selected,        # resolve.pick_models() 사양 그대로
+        "models_backend": "hf_cache" # 문서화용(모델들은 HF/모듈 기본 캐시에 존재)
     }
-    _write_config(config_json, payload)
-    print(f"[bootstrap] Config saved to {config_json}")
+
+    config_json.parent.mkdir(parents=True, exist_ok=True)
+    config_json.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     return payload
 
 
+# 선택: CLI로 단독 실행 테스트 지원
 if __name__ == "__main__":
-    # 수동 테스트용: python -m apps.ai.bootstrap.manager
-    import argparse, os
-    parser = argparse.ArgumentParser(description="Ensure AI models are ready.")
-    parser.add_argument("--models-dir", type=Path, default=Path("data/models"))
-    parser.add_argument("--config-json", type=Path, default=Path("apps/ai/ai.config.json"))
-    parser.add_argument("--force", action="store_true", help="Re-select and reinstall models.")
-    args = parser.parse_args()
+    import sys
 
-    ensure_models_ready(
-        models_dir=args.models_dir,
-        config_json=args.config_json,
-        force=args.force,
-        noninteractive=True,
-    )
+    # 기본 위치 가정: apps/ai/ai.config.json
+    # 필요하면 인자로 경로를 넘길 수 있음: python -m apps.ai.bootstrap.manager apps/ai/ai.config.json
+    cfg_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("apps/ai/ai.config.json")
+    result = ensure_models_ready(models_dir=None, config_json=cfg_path, noninteractive=True)
+    print("[bootstrap] completed")
+    print(json.dumps(result, indent=2, ensure_ascii=False))
