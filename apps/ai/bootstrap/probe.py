@@ -64,7 +64,6 @@ def detect_hardware() -> dict:
       "gpu_name": "NVIDIA RTX 4070",
       "cpu_logical_cores": 16,
       "cpu_physical_cores": 8,
-      "cpu_freq_ghz": 4.8,
       "ram_gib": 31.9,
       "os": {"system": "Windows", "release": "10", "version": "10.0.22621"}
     }
