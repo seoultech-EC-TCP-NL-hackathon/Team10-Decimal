@@ -18,8 +18,7 @@ def cpu_info() -> dict:
     - cpu_physical_cores: 실제 물리 코어 수
     - cpu_logical_cores: 논리 코어 수 (SMT(하이퍼스레딩) 포함)
     """
-    freq = psutil.cpu_freq()
-    max_freq = freq.max / 1000 if freq and freq.max else None
+    
     return {
         "cpu_physical_cores": psutil.cpu_count(logical=False),
         "cpu_logical_cores": psutil.cpu_count(logical=True),
