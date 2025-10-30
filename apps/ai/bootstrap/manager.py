@@ -24,7 +24,7 @@ from .resolve import pick_models
 from .install import install_all
 
 
-def ensure_models_ready(models_dir: Path | None, config_json: Path, noninteractive: bool = True) -> Dict[str, Any]:
+def ensure_models_ready(models_dir: Path | None, config_json: Path) -> Dict[str, Any]:
     """
     최초 실행 시 모델 준비를 보장하고, 결과를 config_json에 기록한다.
     - models_dir 인자는 과거 시그니처 호환용으로 받지만, 실제 설치는 HF/모듈 기본 캐시를 사용한다.
@@ -71,6 +71,6 @@ if __name__ == "__main__":
     # 기본 위치 가정: apps/ai/ai.config.json
     # 필요하면 인자로 경로를 넘길 수 있음: python -m apps.ai.bootstrap.manager apps/ai/ai.config.json
     cfg_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("apps/ai/ai.config.json")
-    result = ensure_models_ready(models_dir=None, config_json=cfg_path, noninteractive=True)
+    result = ensure_models_ready(models_dir=None, config_json=cfg_path)
     print("[bootstrap] completed")
     print(json.dumps(result, indent=2, ensure_ascii=False))
