@@ -63,37 +63,62 @@ def ensure_whisper_model(model_size: str) -> None:
 # Pyannote 설치/캐시 보장 (pyannote.audio)
 # ------------------------------
 def ensure_pyannote_pipeline(repo_id: str, token: Optional[str]) -> None:
-    """pyannote.audio의 Pipeline.from_pretrained을 호출하여 캐시 보장."""
+    """
+    pyannote.audio의 Pipeline.from_pretrained을 호출하여 캐시 보장.
+
+    Compatibility note:
+      - pyannote.audio <= 3.x:   from_pretrained(..., use_auth_token=TOKEN)
+      - pyannote.audio >= 4.0.0: from_pretrained(..., token=TOKEN)
+    We detect the installed version and pass the correct keyword to avoid
+    deprecation/breakage across major versions.
+    """
     try:
+        import importlib, pkg_resources
         pa = importlib.import_module("pyannote.audio")
     except ImportError as e:
         raise RuntimeError(
-            "pyannote.audio 패키지가 필요합니다. `pip install pyannote.audio`"
+            "pyannote.audio 패키지가 필요합니다. `pip install pyannote-audio`"
         ) from e
 
-    print(f"[install/pyannote] ensuring '{repo_id}'")
+    from packaging.version import Version
 
     Pipeline = getattr(pa, "Pipeline", None)
     if Pipeline is None:
         raise RuntimeError("pyannote.audio: Pipeline 클래스를 찾을 수 없습니다.")
 
-    pipeline = None
-    err = None
+    # 버전 파싱
     try:
-        pipeline = Pipeline.from_pretrained(repo_id, use_auth_token=token)
-    except TypeError as e1:
-        err = e1
-        try:
-            pipeline = Pipeline.from_pretrained(repo_id, token=token)
-        except Exception as e2:
-            err = e2
+        pa_version = Version(pkg_resources.get_distribution("pyannote-audio").version)
+    except Exception:
+        pa_version = None  # 안전장치: 모르면 try/fallback로 처리
 
-    if pipeline is None:
-        raise RuntimeError(f"pyannote 모델 준비 실패: {repo_id} ({err})")
+    kw = {}
+    if token:
+        # 4.0.0 이상이면 'token', 그 외에는 'use_auth_token'
+        if pa_version and pa_version >= Version("4.0.0"):
+            kw["token"] = token
+        else:
+            kw["use_auth_token"] = token
+
+    print(f"[install/pyannote] ensuring '{repo_id}' (pyannote.audio={pa_version})")
+
+    # 최종 시도: 버전 감지 실패/오탑재 대비 안전한 이중 시도
+    try:
+        pipeline = Pipeline.from_pretrained(repo_id, **kw)
+    except TypeError:
+        # 키워드가 안 맞으면 반대쪽 키로 재시도
+        if "token" in kw:
+            kw.pop("token", None)
+            if token:
+                kw["use_auth_token"] = token
+        else:
+            kw.pop("use_auth_token", None)
+            if token:
+                kw["token"] = token
+        pipeline = Pipeline.from_pretrained(repo_id, **kw)
 
     del pipeline
     print(f"[install/pyannote] ready: {repo_id}")
-
 
 # ------------------------------
 # LLM 설치/캐시 보장 (HF 기본 캐시)
