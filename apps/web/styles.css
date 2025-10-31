@@ -1448,3 +1448,512 @@ body {
   min-height: 200px;
   overflow-y: auto;
 }
+
+/* 녹음 완료 후 컨트롤 섹션 */
+.recording-controls-completed {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.button-group {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.control-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px;
+    border: 2px solid #3c3c3c;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+    color: #cccccc;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.control-btn:hover {
+    border-color: #007acc;
+    background: linear-gradient(135deg, #37373d 0%, #2d2d30 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.2);
+}
+
+.control-btn i {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.continue-btn {
+    border-color: #10a37f;
+}
+
+.continue-btn:hover {
+    border-color: #0d8f6f;
+    background: linear-gradient(135deg, rgba(16, 163, 127, 0.2) 0%, rgba(16, 163, 127, 0.05) 100%);
+    color: #10a37f;
+}
+
+.continue-btn i {
+    color: #10a37f;
+}
+
+.restart-btn {
+    border-color: #ef4444;
+}
+
+.restart-btn:hover {
+    border-color: #dc2626;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%);
+    color: #ef4444;
+}
+
+.restart-btn i {
+    color: #ef4444;
+}
+
+.recording-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    border: 1px solid #3c3c3c;
+    width: 100%;
+    max-width: 400px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+}
+
+.info-label {
+    color: #8c8c8c;
+    font-weight: 500;
+}
+
+.info-value {
+    color: #cccccc;
+    font-weight: 600;
+}
+
+.info-value.completed {
+    color: #10a37f;
+}
+
+.info-value.time {
+    font-family: 'Courier New', monospace;
+    color: #007acc;
+}
+
+/* 모달 헤더 우측 액션 그룹 */
+.modal-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 모달 최소화 버튼 */
+.minimize-btn {
+    background: none;
+    border: none;
+    color: #cccccc;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+
+.minimize-btn:hover {
+    background-color: #3c3c3c;
+}
+
+/* 하단 미니바(스톱워치) */
+.recording-minibar {
+    position: fixed;
+    right: 20px;
+    bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #2d2d30;
+    border: 1px solid #3c3c3c;
+    border-radius: 20px;
+    padding: 8px 12px;
+    color: #e5e7eb;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+    z-index: 2200;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.3s ease;
+}
+
+.recording-minibar:hover {
+    background: #37373d;
+    transform: translateY(-2px);
+}
+
+.minibar-dot {
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(239,68,68, 0.6);
+}
+
+.recording-minibar.active .minibar-dot {
+    animation: minibar-pulse 1.5s infinite;
+}
+
+@keyframes minibar-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239,68,68, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(239,68,68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68, 0); }
+}
+
+.minibar-text {
+    font-size: 12px;
+    color: #c5c5c5;
+}
+
+.minibar-timer {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #10a37f;
+    font-size: 14px;
+}
+
+/* 파일 이름 입력 모달 */
+.file-name-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+}
+
+.file-name-modal .modal-content {
+    background-color: #252526;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.input-group input[type="text"] {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #3c3c3c;
+    border: 1px solid #4c4c4c;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.input-group input[type="text"]:focus {
+    outline: none;
+    border-color: #007acc;
+    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.2);
+    background-color: #404040;
+}
+
+.input-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: #8c8c8c;
+    font-style: italic;
+}
+
+.modal-actions .primary-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #007acc 0%, #005a9e 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modal-actions .primary-btn:hover {
+    background: linear-gradient(135deg, #005a9e 0%, #004680 100%);
+    transform: translateY(-1px);
+}
+
+/* 디렉토리 탐색기 스타일 */
+.no-folder-message {
+    text-align: center;
+    padding: 40px 20px;
+    color: #8c8c8c;
+}
+
+.no-folder-message i {
+    font-size: 48px;
+    color: #3c3c3c;
+    margin-bottom: 16px;
+    display: block;
+}
+
+.no-folder-message p {
+    margin: 16px 0;
+    font-size: 14px;
+}
+
+.open-folder-btn {
+    background: #007acc;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+}
+
+.open-folder-btn:hover {
+    background: #005a9e;
+}
+
+.directory-tree {
+    min-height: 200px;
+}
+
+.tree-node {
+    margin: 1px 0;
+    user-select: none;
+}
+
+.tree-node-content {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: background-color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.tree-node-content:hover {
+    background-color: #2a2d2e;
+}
+
+.tree-node-content:active {
+    background-color: #37373d;
+}
+
+.tree-node.directory > .tree-node-content {
+    font-weight: 500;
+}
+
+.expand-icon {
+    width: 16px;
+    margin-right: 4px;
+    color: #cccccc;
+    font-size: 10px;
+    transition: transform 0.15s ease;
+}
+
+.folder-icon,
+.file-icon {
+    width: 16px;
+    margin-right: 8px;
+    color: #dcb67a;
+}
+
+.file-icon {
+    color: #519aba;
+}
+
+.tree-node.file .file-icon.fa-file-code {
+    color: #519aba;
+}
+
+.tree-node.file .file-icon.fa-file-audio {
+    color: #f38ba8;
+}
+
+.tree-node.file .file-icon.fa-file-video {
+    color: #fab387;
+}
+
+.tree-node.file .file-icon.fa-file-image {
+    color: #a6e3a1;
+}
+
+.tree-node.file .file-icon.fa-file-pdf {
+    color: #f38ba8;
+}
+
+.node-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.node-count {
+    font-size: 11px;
+    color: #6c7086;
+    margin-left: 8px;
+}
+
+.tree-children {
+    margin-left: 0;
+}
+
+.tree-node.expanded > .tree-node-content .expand-icon {
+    transform: rotate(90deg);
+}
+
+/* 파일 뷰어 스타일 */
+.file-viewer {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #1e1e1e;
+}
+
+.file-header {
+    background-color: #2d2d30;
+    border-bottom: 1px solid #3c3c3c;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.file-meta h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0 0 8px 0;
+}
+
+.file-info {
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+    color: #8c8c8c;
+}
+
+.file-type {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.file-type i {
+    color: #519aba;
+}
+
+.file-content {
+    flex: 1;
+    padding: 0;
+    overflow: auto;
+    background-color: #1e1e1e;
+}
+
+.file-content pre {
+    margin: 0;
+    padding: 20px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: auto;
+    height: 100%;
+}
+
+.file-content code {
+    background: transparent;
+    color: #cccccc;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* 컨텍스트 메뉴 */
+.context-menu {
+    position: fixed;
+    background-color: #2d2d2d;
+    border: 1px solid #454545;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    min-width: 180px;
+    z-index: 3000;
+    padding: 4px 0;
+    font-size: 13px;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #cccccc;
+    transition: background-color 0.15s ease;
+}
+
+.context-menu-item:hover {
+    background-color: #37373d;
+}
+
+.context-menu-item i {
+    width: 16px;
+    color: #8c8c8c;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background-color: #454545;
+    margin: 4px 0;
+}
+
+/* 새 폴더/파일 생성 버튼 강조 */
+.panel-controls .control-btn[onclick*="createNewFolder"] {
+    color: #dcb67a;
+}
+
+.panel-controls .control-btn[onclick*="createNewFolder"]:hover {
+    background-color: rgba(220, 182, 122, 0.2);
+}

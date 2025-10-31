@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>강의 녹음 요약 AI</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body> 
@@ -16,13 +16,45 @@
             <button class="sidebar-toggle-btn" onclick="toggleSidebarMini()" title="사이드바 접기/펼치기">
                 <i class="fas fa-chevron-left"></i>
             </button>
-            <div class="sidebar-tab active" data-panel="summaries" title="요약 기록">
+            <div class="sidebar-tab active" data-panel="explorer" title="탐색기">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <div class="sidebar-tab" data-panel="summaries" title="요약 기록">
                 <i class="fas fa-history"></i>
             </div>
         </div>
 
         <!-- 사이드바 패널들 -->
         <div class="sidebar-panels">
+            <!-- 탐색기 패널 -->
+            <div class="sidebar-panel active" id="explorer-panel">
+                <div class="panel-header">
+                    <h3>탐색기</h3>
+                    <div class="panel-controls">
+                        <button class="control-btn" onclick="openDirectoryPicker()" title="폴더 열기">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                        <button class="control-btn" onclick="createNewFolder()" title="새 폴더">
+                            <i class="fas fa-folder-plus"></i>
+                        </button>
+                        <button class="control-btn" onclick="refreshDirectory()" title="새로고침">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="directory-tree" id="directoryTree">
+                        <div class="no-folder-message">
+                            <i class="fas fa-folder-plus"></i>
+                            <p>폴더를 선택해주세요</p>
+                            <button class="open-folder-btn" onclick="openDirectoryPicker()">
+                                폴더 열기
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 요약 기록 패널 -->
             <div class="sidebar-panel" id="summaries-panel">
                 <div class="panel-header">
@@ -111,9 +143,15 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3 id="modalTitle">실시간 녹음</h3>
-                    <button class="close-btn" onclick="closeRecordingModal()">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <!-- 버튼들을 래핑해서 우측에 나란히 배치 -->
+                    <div class="modal-header-actions">
+                        <button class="minimize-btn" onclick="minimizeRecordingModal()" title="내리기">
+                            <i class="fas fa-window-minimize"></i>
+                        </button>
+                        <button class="close-btn" onclick="closeRecordingModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="modal-body">
                     <!-- 녹음 컨트롤 -->
@@ -169,8 +207,60 @@
                 <p>강의 내용 분석 중…</p>
             </div>
         </div>
+
+        <!-- 하단 미니바(스톱워치) 추가 -->
+        <div class="recording-minibar" id="recordingMinibar" onclick="restoreRecordingModal()" style="display: none;">
+            <span class="minibar-dot"></span>
+            <span class="minibar-text" id="minibarStatus">대기</span>
+            <span class="minibar-timer" id="minibarTimer">00:00</span>
+        </div>
+
+        <!-- 파일 이름 입력 모달 -->
+        <div class="file-name-modal" id="fileNameModal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>요약 파일 이름 설정</h3>
+                    <button class="close-btn" onclick="closeFileNameModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="summaryFileName">파일 이름</label>
+                        <input type="text" id="summaryFileName" placeholder="요약 파일 이름을 입력하세요" />
+                        <small class="input-hint">생성 날짜가 기본으로 설정됩니다</small>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="primary-btn" onclick="confirmFileName()">
+                        <i class="fas fa-check"></i>
+                        <span>확인</span>
+                    </button>
+                    <button class="cancel-btn" onclick="closeFileNameModal()">
+                        <span>취소</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 컨텍스트 메뉴 -->
+        <div class="context-menu" id="contextMenu" style="display: none;">
+            <div class="context-menu-item" onclick="createNewFolder()">
+                <i class="fas fa-folder-plus"></i>
+                <span>새 폴더</span>
+            </div>
+            <div class="context-menu-item" onclick="createNewFile()">
+                <i class="fas fa-file-plus"></i>
+                <span>새 파일</span>
+            </div>
+            <div class="context-menu-divider"></div>
+            <div class="context-menu-item" onclick="refreshDirectory()">
+                <i class="fas fa-sync-alt"></i>
+                <span>새로고침</span>
+            </div>
+        </div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="1.js"></script>
 </body>
 </html>
