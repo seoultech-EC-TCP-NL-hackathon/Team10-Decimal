@@ -21,7 +21,7 @@ from .database import SessionLocal, engine
 # --- 설정 (Configurations) ---
 models.Base.metadata.create_all(bind=engine)
 UPLOAD_DIR = Path("./uploads")
-ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav","flac","ogg","opus","webm"}
+ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav",".flac",".ogg",".opus",".webm"}
 MAX_FILES = 1
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 # 10GB
 
@@ -236,7 +236,7 @@ def read_subjects(workspace_id: Optional[int] = None, db: Session = Depends(get_
 def delete_subject(subject_id: int, db: Session = Depends(get_db)):
     subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
     if not subject:
-        raise HTTPException(status_code=4404, detail=f"Subject with id {subject_id} not found.")
+        raise HTTPException(status_code=404, detail=f"Subject with id {subject_id} not found.")
     db.delete(subject)
     db.commit()
     return Response(status_code=204)
