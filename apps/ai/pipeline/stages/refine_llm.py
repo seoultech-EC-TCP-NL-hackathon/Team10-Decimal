@@ -336,14 +336,10 @@ class RefineLLMStage(BaseStage):
             return [str(value)]
 
     def _strip_think_tags(self, text: str) -> str:
-        """Remove <think>...</think> sections and any prefix ending at a stray </think>."""
-        if not isinstance(text, str):
+        """Remove <think>...</think> sections from LLM outputs."""
+        if not isinstance(text, str) or "<think" not in text:
             return text
-        # 1) remove paired think blocks (case-insensitive, dot matches newlines)
-        cleaned = re.sub(r"(?is)<think\b[^>]*>.*?</think>", "", text)
-        # 2) if there's a stray closing tag, drop everything up to and including it
-        cleaned = re.sub(r"(?is)\A.*?</think>\s*", "", cleaned)
-        return cleaned.strip()
+        return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
 
     def _determine_gpu_layers(self, context: StageContext) -> int:
         """Determine how many layers to offload to GPU (defaults to all)."""
@@ -371,8 +367,9 @@ class RefineLLMStage(BaseStage):
 
             if getattr(torch, "cuda", None) and torch.cuda.is_available():
                 return -1
-        except Exception:
-            pass
+        except Exception as e:
+            # Ignore all exceptions here; fallback to CPU if GPU detection fails.
+            print(f"[RefineStage] Exception while checking for CUDA GPU: {e}")
 
         # Attempt full offload; loader will fall back to CPU if GPU loading fails.
         return -1
