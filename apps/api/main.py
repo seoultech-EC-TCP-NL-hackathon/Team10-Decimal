@@ -371,7 +371,7 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db)):
         # 파일 삭제에 실패해도 DB 삭제는 계속 진행
         
     db.delete(subject)
-    db.commit()
+    db.commit()    
     return Response(status_code=204)
 
 # ---  Summary Job API (녹음 파일 저장)  ---
@@ -380,7 +380,6 @@ async def create_summary_job_with_files(
     background_tasks: BackgroundTasks,
     title: str = Form(...),
     subject_id: Optional[int] = Form(None),
-    # is_korean_only 파라미터는 여기서 제거 (Subject의 플래그를 사용)
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
@@ -402,13 +401,35 @@ async def create_summary_job_with_files(
                 detail=f"File format not allowed for '{file.filename}'. Allowed formats: {allowed_ext_str}",
             )
 
-        contents = await file.read()
-        size = len(contents)
+        # 메타데이터에서 파일 크기 확인 (가능한 경우)
+        size = None
+        try:
+            file.file.seek(0, os.SEEK_END)
+            size = file.file.tell()
+            file.file.seek(0)
+        except Exception:
+            pass
+
+        # 파일 크기를 알 수 없으면 스트리밍으로 크기 계산
+        if not size or size == 0:
+            size = 0
+            chunk_size = 1024 * 1024  # 1MB 단위로 읽기
+            while True:
+                chunk = await file.read(chunk_size)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > MAX_FILE_SIZE_BYTES:
+                    raise HTTPException(status_code=413, detail=f"File '{file.filename}' exceeds 10GB limit.")
+            await file.seek(0)
+
+        # 최종 크기 초과 확인
         if size > MAX_FILE_SIZE_BYTES:
             raise HTTPException(status_code=413, detail=f"File '{file.filename}' exceeds 10GB limit.")
-        await file.seek(0)
+
         file_sizes[file.filename] = size
 
+    # --- Subject 유효성 확인 ---
     if subject_id is not None:
         subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
         if not subject:
@@ -527,3 +548,4 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
+
