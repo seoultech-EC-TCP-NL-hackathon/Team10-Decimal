@@ -58,7 +58,7 @@ def get_db():
         db.close()
 
 # --- AI 파트 함수 ---
-def call_ai_model(file_path: Path, source_type: str, is_korean_only: bool, run_id: str) -> dict:
+def call_ai_model(file_path: Path, is_korean_only: bool, run_id: str) -> dict:
     """
     백엔드에서 정한 run_id를 그대로 AI에 전달하고,
     동일 run_id로 산출물을 읽어 반환합니다.
