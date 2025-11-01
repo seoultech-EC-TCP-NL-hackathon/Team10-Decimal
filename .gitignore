@@ -301,3 +301,6 @@ uploads/*
 
 # 하지만 폴더 구조 유지를 위한 .gitkeep 파일은 무시하지 않습니다
 !uploads/.gitkeep
+
+# ===== samples 파일 =====
+samples/
