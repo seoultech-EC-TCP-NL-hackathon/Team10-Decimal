@@ -51,8 +51,7 @@ class SummaryJob(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id"), nullable=True) 
     title = Column(String(255), nullable=False)
     status = Column(SQLAlchemyEnum(JobStatus), nullable=False, default=JobStatus.PENDING)
-
-    final_summary = Column(Text) 
+ 
     error_message = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     started_at = Column(DateTime(timezone=True)) 

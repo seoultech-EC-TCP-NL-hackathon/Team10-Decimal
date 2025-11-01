@@ -10,9 +10,8 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import func
 from typing import List, Optional
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # 로컬 모듈 임포트
 from . import models, schemas
@@ -20,26 +19,15 @@ from .database import SessionLocal, engine
 
 # --- 설정 (Configurations) ---
 models.Base.metadata.create_all(bind=engine)
-UPLOAD_DIR = Path("./uploads")
+PROJECTS_BASE_DIR = Path(__file__).parent.parent / "apps" / "projects"
+AI_OUTPUT_DIR = Path(__file__).parent.parent / "apps" / "ai" / "output"
 ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav",".flac",".ogg",".opus",".webm"}
-MAX_FILES = 1
+MAX_FILES = 10
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 # 10GB
 
 app = FastAPI()
 
-# --- CORS 설정 ---
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.mount("/", StaticFiles(directory="apps/web/dist", html=True), name="static")
 
 # --- 의존성 (Dependencies) ---
 def get_db():
@@ -67,22 +55,34 @@ def call_ai_model(file_path: Path, source_type: str, is_korean_only: bool) -> di
         {"speaker_label": "Speaker 2", "start_time_seconds": 5.1, "end_time_seconds": 9.8, "text": "네, 교수님. 지난 시간에 배운 내용에 대해 질문이 있습니다."},
     ]
     
-    save_dir = file_path.parent
-    speaker_text_path = save_dir / "speaker_transcript.txt"
+    save_dir = AI_OUTPUT_DIR
+    save_dir.mkdir(parents=True, exist_ok=True) # 폴더가 없으면 생성
+    
+    file_stem = file_path.stem # 'audio1.mp3'에서 'audio1'을 추출
+    
+    # 1. speaker_attributed_text_path
+    speaker_text_path = save_dir / f"{file_stem}_transcript.txt"
     with open(speaker_text_path, "w", encoding="utf-8") as f:
         f.write("[00:00:00.500] Speaker 1: 안녕하세요, 오늘 강의를 시작하겠습니다.\n")
         f.write("[00:00:05.100] Speaker 2: 네, 교수님. 지난 시간에 배운 내용에 대해 질문이 있습니다.\n")
 
+    # 2. individual_summary
+    individual_summary_content = f"'{file_path.name}'에 대한 AI 개별 요약본입니다."
+    summary_text_path = save_dir / f"{file_stem}_summary.txt"
+    with open(summary_text_path, "w", encoding="utf-8") as f:
+        f.write(individual_summary_content)
+
     print(f"INFO: [AI] '{file_path.name}' 파일 처리 완료.")
     return {
         "transcription_segments": segments, 
-        "individual_summary": f"'{file_path.name}'에 대한 AI 개별 요약본입니다.",
+        "individual_summary": individual_summary_content, # DB 저장을 위해 텍스트도 반환
         "output_artifacts": {
-            "speaker_attributed_text_path": str(speaker_text_path)
+            "speaker_attributed_text_path": str(speaker_text_path),
+            "individual_summary_path": str(summary_text_path) # 요약 파일 경로도 반환
         }
     }
 
-# --- 백그라운드 작업 (is_korean_only 플래그 조회 로직 수정) ---
+# --- 백그라운드 작업  ---
 def run_ai_processing(job_id: int):
     """백그라운드에서 실행될 AI 처리 전체 과정"""
     print(f"INFO: [백그라운드 작업 시작] Job ID: {job_id}")
@@ -99,35 +99,61 @@ def run_ai_processing(job_id: int):
 
         # ---  1. Subject에서 is_korean_only 플래그 가져오기  ---
         is_korean_flag = False # 기본값
+        subject_name_for_path = "default_subject"
+        workspace_name_for_path = "default_workspace" 
+
         if job.subject_id:
             subject = db.query(models.Subject).filter(models.Subject.id == job.subject_id).first()
+            
             if subject:
                 is_korean_flag = subject.is_korean_only
+                subject_name_for_path = subject.name
+                
+                if subject.workspace:
+                    workspace_name_for_path = subject.workspace.name
+                else:
+                    workspace = db.query(models.Workspace).filter(models.Workspace.id == subject.workspace_id).first()
+                    if workspace:
+                        workspace_name_for_path = workspace.name
         
         print(f"INFO: [AI] 작업 {job_id}의 한국어 특화 모델 사용 여부: {is_korean_flag}")
 
         job.status = models.JobStatus.PROCESSING
         job.started_at = datetime.now(timezone.utc)
-        db.commit()
-
+        
         transcribe_log = models.JobStageLog(
             job_id=job_id, 
             stage_name="transcribe", 
             status=models.JobStatus.PROCESSING, 
             start_time=datetime.now(timezone.utc)
         )
-        db.add(transcribe_log)
-        db.commit()
+        summarize_log = models.JobStageLog(
+            job_id=job_id, 
+            stage_name="summarize", 
+            status=models.JobStatus.PROCESSING, 
+            start_time=datetime.now(timezone.utc)
+        )
+        db.add_all([transcribe_log, summarize_log])
         
+        # [수정] DB Commit은 루프 밖에서 한 번만 수행하도록 변경
+        # db.commit() # <- (삭제)
+
         for material in job.source_materials:
-            material.status = models.MaterialStatus.TRANSCRIBING
-            db.commit()
             
             # ---  2. call_ai_model로 플래그 값 전달  ---
+            dynamic_input_dir = PROJECTS_BASE_DIR / workspace_name_for_path / subject_name_for_path
+            full_file_path = dynamic_input_dir / material.storage_path
+            
+            if not full_file_path.exists():
+                print(f"ERROR: AI가 처리할 원본 파일을 찾을 수 없습니다: {full_file_path}")
+                material.status = models.MaterialStatus.FAILED
+                # db.commit() # <- (삭제)
+                continue # 다음 material 루프로 이동
+
             ai_results = call_ai_model(
-                Path(material.storage_path), 
+                full_file_path, 
                 material.source_type, 
-                is_korean_flag # Subject에서 가져온 플래그
+                is_korean_flag
             )
             
             for seg_data in ai_results["transcription_segments"]:
@@ -139,38 +165,41 @@ def run_ai_processing(job_id: int):
             
             material.individual_summary = ai_results["individual_summary"]
             material.output_artifacts = ai_results["output_artifacts"]
-            material.status = models.MaterialStatus.SUMMARIZING
+            
+            # [수정] SUMMARIZING 단계를 건너뛰고 바로 COMPLETED로 변경
+            material.status = models.MaterialStatus.COMPLETED 
         
+        # [수정] db.commit()을 루프 밖으로 이동 (10개 파일 처리 후 1번만 커밋)
         db.commit() 
         
         transcribe_log.status = models.JobStatus.COMPLETED
         transcribe_log.end_time = datetime.now(timezone.utc)
-        db.commit()
-
-        summarize_log = models.JobStageLog(
-            job_id=job_id, 
-            stage_name="summarize", 
-            status=models.JobStatus.PROCESSING, 
-            start_time=datetime.now(timezone.utc)
-        )
-        db.add(summarize_log)
-        db.commit()
-        
-        all_summaries = [m.individual_summary for m in job.source_materials if m.individual_summary]
-        final_summary_content = "\n\n---\n\n".join(all_summaries)
-        
-        job.final_summary = f"# {job.title} 최종 요약\n\n{final_summary_content}"
-        
-        for material in job.source_materials:
-            material.status = models.MaterialStatus.COMPLETED
         
         summarize_log.status = models.JobStatus.COMPLETED
         summarize_log.end_time = datetime.now(timezone.utc)
 
-        job.status = models.JobStatus.COMPLETED
-        job.completed_at = datetime.now(timezone.utc)
-        db.commit() 
-        print(f"INFO: [백그라운드 작업 성공] Job ID: {job_id}")
+        # [수정] (논리 오류 1) 불필요한 덮어쓰기 루프 삭제
+        # for material in job.source_materials:
+        #     material.status = models.MaterialStatus.COMPLETED
+
+        # [수정] (논리 오류 2) 최종 작업 상태 판별
+        # DB에서 방금 커밋된 material 상태를 다시 로드(refresh)
+        db.refresh(job) 
+        
+        failed_materials_count = db.query(models.SourceMaterial).filter(
+            models.SourceMaterial.job_id == job_id,
+            models.SourceMaterial.status == models.MaterialStatus.FAILED
+        ).count()
+
+        if failed_materials_count > 0:
+            job.status = models.JobStatus.FAILED
+            job.error_message = f"총 {len(job.source_materials)}개 파일 중 {failed_materials_count}개 처리 실패."
+        else:
+            job.status = models.JobStatus.COMPLETED
+            job.completed_at = datetime.now(timezone.utc)
+        
+        db.commit() # 최종 Job 상태 저장
+        print(f"INFO: [백그라운드 작업 {job.status}] Job ID: {job_id}")
 
     except Exception as e:
         # ... (예외 처리 동일) ...
@@ -206,6 +235,43 @@ def create_workspace(workspace: schemas.WorkspaceCreate, db: Session = Depends(g
 def read_workspaces(db: Session = Depends(get_db)):
     return db.query(models.Workspace).all()
 
+@app.delete("/workspaces/{workspace_id}", status_code=204)
+def delete_workspace(workspace_id: int, db: Session = Depends(get_db)):
+    # 1. 워크스페이스 조회
+    workspace = db.query(models.Workspace).filter(models.Workspace.id == workspace_id).first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail=f"Workspace with id {workspace_id} not found.")
+
+    # 2. [파일 삭제] 하위의 모든 AI 산출물 파일(txt)을 먼저 삭제
+    try:
+        # [수정] N+1 쿼리를 방지하기 위해 삭제할 Material을 한 번에 조회
+        materials_to_delete = db.query(models.SourceMaterial).join(models.SummaryJob).join(models.Subject).filter(
+            models.Subject.workspace_id == workspace_id
+        ).all()
+
+        for material in materials_to_delete:
+            if material.output_artifacts:
+                # transcript 파일 삭제
+                if "speaker_attributed_text_path" in material.output_artifacts:
+                    transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
+                    if os.path.isfile(transcript_path):
+                        os.remove(transcript_path)
+
+                # summary 파일 삭제
+                if "individual_summary_path" in material.output_artifacts:
+                    summary_path = Path(material.output_artifacts["individual_summary_path"])
+                    if os.path.isfile(summary_path):
+                        os.remove(summary_path)
+
+    except OSError as e:
+        print(f"Error deleting associated AI files for workspace {workspace_id}: {e}")
+        # 파일 삭제에 실패해도 DB 삭제는 계속 진행
+
+    # 3. [DB 삭제] 워크스페이스 삭제 (하위 Subject, Job 등은 DB에서 자동 cascade 삭제)
+    db.delete(workspace)
+    db.commit()
+    return Response(status_code=204)
+
 # ---  Subject API 수정 (is_korean_only 저장)  ---
 @app.post("/subjects", response_model=schemas.Subject, status_code=201)
 def create_subject(subject: schemas.SubjectCreate, db: Session = Depends(get_db)):
@@ -236,11 +302,34 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db)):
     subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
     if not subject:
         raise HTTPException(status_code=404, detail=f"Subject with id {subject_id} not found.")
+
+    # Subject를 삭제하기 전, 하위 AI 산출물 파일을 먼저 삭제
+    try:
+        # 이 Subject에 속한 모든 Job을 조회
+        jobs_to_delete = db.query(models.SummaryJob).filter(models.SummaryJob.subject_id == subject_id).all()
+        
+        for job in jobs_to_delete:
+            for material in job.source_materials:
+                if material.output_artifacts:
+                    if "speaker_attributed_text_path" in material.output_artifacts:
+                        transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
+                        if os.path.isfile(transcript_path):
+                            os.remove(transcript_path)
+                            
+                    if "individual_summary_path" in material.output_artifacts:
+                        summary_path = Path(material.output_artifacts["individual_summary_path"])
+                        if os.path.isfile(summary_path):
+                            os.remove(summary_path)
+
+    except OSError as e:
+        print(f"Error deleting associated AI files for subject {subject_id}: {e}")
+        # 파일 삭제에 실패해도 DB 삭제는 계속 진행
+        
     db.delete(subject)
     db.commit()
     return Response(status_code=204)
 
-# ---  Summary Job API 수정 (녹음 파일 저장)  ---
+# ---  Summary Job API (녹음 파일 저장)  ---
 @app.post("/summary-jobs", response_model=schemas.SummaryJobDetail, status_code=201)
 async def create_summary_job_with_files(
     background_tasks: BackgroundTasks,
@@ -252,18 +341,22 @@ async def create_summary_job_with_files(
     db: Session = Depends(get_db)
 ):
     # --- 입력 검증 로직 ---
-    if len(files) != MAX_FILES:
-        raise HTTPException(status_code=400, detail=f"Exactly {MAX_FILES} file must be uploaded.")
-    file = files[0]
-    file_ext = Path(file.filename).suffix.lower()
-    if file_ext not in ALLOWED_EXTENSIONS:
-        allowed_ext_str = ", ".join(ALLOWED_EXTENSIONS)
-        raise HTTPException(status_code=415, detail=f"File format not allowed. Allowed formats: {allowed_ext_str}")
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one file must be uploaded.")
+        
+    if len(files) > MAX_FILES:
+        raise HTTPException(status_code=400, detail=f"Maximum {MAX_FILES} files can be uploaded at once.")
 
-    if file.size is None:
-         raise HTTPException(status_code=411, detail="File size could not be determined.")
-    elif file.size > MAX_FILE_SIZE_BYTES:
-         raise HTTPException(status_code=413, detail=f"File size exceeds the limit of 10GB.")
+    for file in files:
+        file_ext = Path(file.filename).suffix.lower()
+        if file_ext not in ALLOWED_EXTENSIONS:
+            allowed_ext_str = ", ".join(ALLOWED_EXTENSIONS)
+            raise HTTPException(status_code=415, detail=f"File format not allowed for '{file.filename}'. Allowed formats: {allowed_ext_str}")
+
+        if file.size is None:
+             raise HTTPException(status_code=411, detail=f"File size could not be determined for '{file.filename}'.")
+        elif file.size > MAX_FILE_SIZE_BYTES:
+             raise HTTPException(status_code=413, detail=f"File '{file.filename}' exceeds the size limit of 10GB.")
     
     if subject_id is not None:
         subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
@@ -277,32 +370,35 @@ async def create_summary_job_with_files(
     db.commit()
     db.refresh(summary_job)
 
-    # ... (파일 저장 및 SourceMaterial 생성 로직 동일) ...
-    save_dir = UPLOAD_DIR / "source_materials" / str(summary_job.id)
-    os.makedirs(save_dir, exist_ok=True)
-    file_location = save_dir / file.filename
+    # ... (SourceMaterial 생성 로직 ) ...
     try:
-        with open(file_location, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        for file in files:
+            
+            source_type = file.content_type or "unknown"
+            
+            source_material = models.SourceMaterial(
+                job_id=summary_job.id,
+                source_type=source_type,
+                original_filename=file.filename,
+                storage_path=file.filename,
+                file_size_bytes=file.size
+            )
+            db.add(source_material)
+        
+        db.commit() # 모든 SourceMaterial을 한 번에 저장
+    
     except Exception as e:
         db.rollback() 
-        raise HTTPException(status_code=500, detail=f"Failed to save uploaded file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save uploaded files: {e}")
+    
     finally:
-        await file.close()
+        for file in files:
+            await file.close() #  모든 파일 핸들 닫기
 
-    source_material = models.SourceMaterial(
-        job_id=summary_job.id,
-        source_type=file.content_type or "unknown",
-        original_filename=file.filename,
-        storage_path=str(file_location),
-        file_size_bytes=file.size
-    )
-    db.add(source_material)
-    db.commit()
-    db.refresh(summary_job)
+    db.refresh(summary_job) #  source_materials 관계를 새로고침
 
     background_tasks.add_task(run_ai_processing, summary_job.id)
-    return summary_job 
+    return summary_job
 
 # --- (나머지 GET, DELETE API는 변경 없음) ---
 @app.get("/summary-jobs", response_model=List[schemas.SummaryJobDetail])
@@ -319,23 +415,30 @@ def read_summary_job(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=f"Job with id {job_id} not found.")
     return job
 
-@app.get("/summary-jobs/{job_id}/download")
-def download_summary(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(models.SummaryJob).filter(models.SummaryJob.id == job_id).first()
-
-    if not job:
-        raise HTTPException(status_code=404, detail=f"Job with id {job_id} not found.")
-    if job.status != models.JobStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail=f"Job {job_id} is not completed yet (status: {job.status}).")
+@app.get("/source-materials/{material_id}/download", response_class=Response)
+def download_individual_summary(material_id: int, db: Session = Depends(get_db)):
+    """
+    개별 파일(SourceMaterial)의 요약본(individual_summary)을 다운로드합니다.
+    """
+    material = db.query(models.SourceMaterial).filter(models.SourceMaterial.id == material_id).first()
     
-    if not job.final_summary:
-        raise HTTPException(status_code=404, detail=f"Summary content for job {job_id} not found.")
-
+    if not material:
+        raise HTTPException(status_code=404, detail=f"Source material with id {material_id} not found.")
+    
+    if material.status != models.MaterialStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Transcription and summarization for this material are not completed yet.")
+        
+    if not material.individual_summary:
+        raise HTTPException(status_code=404, detail="Individual summary content not found for this material.")
+        
+    # 파일 이름에 원본 파일명을 활용
+    filename = Path(material.original_filename).stem # 원본 파일명에서 확장자 제거
+    
     return Response(
-        content=job.final_summary, 
+        content=material.individual_summary, 
         media_type="text/markdown", 
         headers={
-            "Content-Disposition": f"attachment; filename=summary_job_{job_id}.md"
+            "Content-Disposition": f"attachment; filename={filename}_summary.md"
         }
     )
 
@@ -345,12 +448,28 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail=f"Job with id {job_id} not found.")
 
-    job_dir = UPLOAD_DIR / "source_materials" / str(job_id)
-    if os.path.isdir(job_dir):
-        try:
-            shutil.rmtree(job_dir)
-        except OSError as e:
-            print(f"Error deleting directory {job_dir}: {e}")
+    # --- [수정] AI 산출물 파일 삭제 로직 ---
+    try:
+        for material in job.source_materials:
+            # AI가 생성한 산출물 파일들을 삭제
+            if material.output_artifacts:
+                if "speaker_attributed_text_path" in material.output_artifacts:
+                    transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
+                    if os.path.isfile(transcript_path):
+                        os.remove(transcript_path)
+                        
+                # [추가] 2. AI가 생성한 ..._summary.txt 삭제
+                if "individual_summary_path" in material.output_artifacts:
+                    summary_path = Path(material.output_artifacts["individual_summary_path"])
+                    if os.path.isfile(summary_path):
+                        os.remove(summary_path)
+
+            # [참고] 원본 오디오 파일 (apps/projects/...)은 삭제하지 않습니다.
+            # 프론트엔드/AI가 관리하는 파일로 간주합니다.
+
+    except OSError as e:
+        print(f"Error deleting associated AI files for job {job_id}: {e}")
+        # 파일 삭제에 실패해도 DB 삭제는 계속 진행합니다.
             
     db.delete(job)
     db.commit()
