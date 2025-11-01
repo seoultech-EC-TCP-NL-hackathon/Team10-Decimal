@@ -182,7 +182,6 @@ class Resources:
         """Return the summarisation/refinement language model or ``None`` if unavailable."""
         if self._llm_sum is None:
             repo_id = self.config.selected_models.get("llm_sum_repo_id")
-            pattern = self.config.selected_models.get("llm_sum_allow_pattern")
             if not repo_id:
                 return None
             try:
