@@ -85,10 +85,22 @@ def call_ai_model(file_path: Path, source_type: str, is_korean_only: bool, run_i
 
         individual_summary_content = summary_file_path.read_text(encoding="utf-8")
 
-        # (임시) segments 예시 반환
-        segments = [
-            {"speaker_label": "S1", "start_time_seconds": 0.0, "end_time_seconds": 1.0, "text": "AI 파이프라인 실행 완료."},
-        ]
+       
+        # speaker-attributed.txt 파일에서 segments 파싱 (JSON assumed)
+        try:
+            segments = json.loads(transcript_file_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            # JSON 파싱 실패 시, fallback으로 일반 텍스트 줄 단위로 변환
+            print(f"WARN: [AI] speaker-attributed.txt JSON 파싱 실패. 라인 기반 파싱 시도.")
+            lines = transcript_file_path.read_text(encoding="utf-8").splitlines()
+            segments = [
+                {"speaker_label": "UNKNOWN", "start_time_seconds": 0.0, "end_time_seconds": 0.0, "text": line}
+                for line in lines if line.strip()
+            ]
+        except Exception as e:
+            print(f"ERROR: [AI] speaker-attributed.txt 파싱 실패: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to parse speaker-attributed.txt: {e}")
+
 
         print(f"INFO: [AI] 산출물 읽기 완료 (run_id={run_id}).")
         return {
@@ -513,4 +525,5 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
             
     db.delete(job)
     db.commit()
+
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
