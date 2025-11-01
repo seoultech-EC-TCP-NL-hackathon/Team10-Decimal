@@ -251,18 +251,21 @@ def delete_workspace(workspace_id: int, db: Session = Depends(get_db)):
         ).all()
 
         for material in materials_to_delete:
+            # AI가 생성한 산출물 파일들을 삭제
             if material.output_artifacts:
-                # transcript 파일 삭제
+                # 1. transcript 파일 삭제
                 if "speaker_attributed_text_path" in material.output_artifacts:
                     transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
-                    if os.path.isfile(transcript_path):
-                        os.remove(transcript_path)
-
-                # summary 파일 삭제
+                    # is_file()로 존재 확인 후 unlink()로 삭제 시도
+                    if transcript_path.is_file():
+                        transcript_path.unlink()
+                        
+                # 2. summary 파일 삭제
                 if "individual_summary_path" in material.output_artifacts:
                     summary_path = Path(material.output_artifacts["individual_summary_path"])
-                    if os.path.isfile(summary_path):
-                        os.remove(summary_path)
+                    # is_file()로 존재 확인 후 unlink()로 삭제 시도
+                    if summary_path.is_file():
+                        summary_path.unlink()
 
     except OSError as e:
         print(f"Error deleting associated AI files for workspace {workspace_id}: {e}")
@@ -314,13 +317,13 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db)):
                 if material.output_artifacts:
                     if "speaker_attributed_text_path" in material.output_artifacts:
                         transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
-                        if os.path.isfile(transcript_path):
-                            os.remove(transcript_path)
+                        if transcript_path.is_file():
+                            transcript_path.unlink()
                             
                     if "individual_summary_path" in material.output_artifacts:
                         summary_path = Path(material.output_artifacts["individual_summary_path"])
-                        if os.path.isfile(summary_path):
-                            os.remove(summary_path)
+                        if summary_path.is_file():
+                            summary_path.unlink()
 
     except OSError as e:
         print(f"Error deleting associated AI files for subject {subject_id}: {e}")
@@ -456,14 +459,14 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
             if material.output_artifacts:
                 if "speaker_attributed_text_path" in material.output_artifacts:
                     transcript_path = Path(material.output_artifacts["speaker_attributed_text_path"])
-                    if os.path.isfile(transcript_path):
-                        os.remove(transcript_path)
+                    if transcript_path.is_file():
+                        transcript_path.unlink()
                         
                 # [추가] 2. AI가 생성한 ..._summary.txt 삭제
                 if "individual_summary_path" in material.output_artifacts:
                     summary_path = Path(material.output_artifacts["individual_summary_path"])
-                    if os.path.isfile(summary_path):
-                        os.remove(summary_path)
+                    if summary_path.is_file():
+                        summary_path.unlink()
 
             # [참고] 원본 오디오 파일 (apps/projects/...)은 삭제하지 않습니다.
             # 프론트엔드/AI가 관리하는 파일로 간주합니다.
@@ -474,5 +477,4 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
             
     db.delete(job)
     db.commit()
-
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
