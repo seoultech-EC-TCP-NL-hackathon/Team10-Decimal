@@ -1007,6 +1007,27 @@ body {
     margin: 16px 0;
 }
 
+/* 화자 구분 트랜스크립트 스타일 */
+.speaker-transcript p {
+    margin: 1.2rem 0;
+    padding: 0.8rem;
+    background: #1e1e1e;
+    border-left: 3px solid #4ec9b0;
+    border-radius: 4px;
+}
+
+.speaker-transcript strong {
+    color: #4ec9b0;
+    font-weight: 600;
+}
+
+.speaker-transcript .timestamp {
+    color: #858585;
+    font-size: 0.85em;
+    margin-left: 8px;
+    font-family: 'Consolas', monospace;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     body {
@@ -1079,6 +1100,106 @@ body {
 .modal-actions .lang-flag input {
     transform: scale(1.1);
     cursor: pointer;
+}
+
+/* 폴더 선택 섹션 */
+.folder-selection-section {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.folder-selection-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dcb67a;
+    font-weight: 500;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.folder-input-group {
+    margin-bottom: 12px;
+}
+
+.folder-input-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.folder-input-group label i {
+    color: #dcb67a;
+}
+
+.folder-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.folder-input-row select,
+.folder-input-group input {
+    flex: 1;
+    background: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #cccccc;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.folder-input-row select:focus,
+.folder-input-group input:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.folder-input-group input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.folder-new-btn {
+    background: #0e639c;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.folder-new-btn:hover {
+    background: #1177bb;
+}
+
+.folder-selection-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #2d2d30;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #999;
+}
+
+.folder-selection-hint i {
+    color: #4ec9b0;
+}
+
+.workspace-preview,
+.subject-preview {
+    color: #4ec9b0;
+    font-family: 'Consolas', monospace;
 }
 
 /* 요약 결과 스타일링 */
@@ -1439,12 +1560,416 @@ body {
 }
 
 .resultbox {
-  border: 1px solid #3c3c3c;
-  border-radius: 6px;
-  background: #1e1e1e;
-  padding: 16px;
-  color: #ddd;
-  line-height: 1.6;
-  min-height: 200px;
-  overflow-y: auto;
+    border: 1px solid #3c3c3c;
+    border-radius: 6px;
+    background: #1e1e1e;
+    padding: 16px;
+    color: #ddd;
+    line-height: 1.6;
+    overflow-y: auto;
+}
+
+/* 텍스트 하단 복사 버튼 */
+.copy-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.copy-row .btn.copy-btn {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+    background:#3c3c3c;
+    color:white;
+    border-radius:6px;
+}
+
+/* 오디오 플레이어 레이아웃 */
+.resultbox .audio-player audio {
+    width: 100%;
+    outline: none;
+    margin-bottom: 8px;
+}
+.resultbox .audio-meta {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: #9ca3af;
+}
+.resultbox .audio-meta i { color: #dcb67a; }
+.resultbox .audio-download {
+    margin-left: auto;
+    text-decoration: none;
+    border: 1px solid #3c3c3c;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #ccc;
+}
+.resultbox .audio-download:hover {
+    background: #2d2d30;
+}
+.resultbox .audio-missing {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* ============================================
+   녹음 중지 후 버튼들 (이어서/처음부터)
+   ============================================ */
+.recording-controls-completed {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.recording-controls-completed .button-group {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.recording-controls-completed .control-btn {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.recording-controls-completed .continue-btn {
+    background-color: #10a37f;
+    color: white;
+}
+
+.recording-controls-completed .continue-btn:hover {
+    background-color: #0d8f6f;
+}
+
+.recording-controls-completed .restart-btn {
+    background-color: #3c3c3c;
+    color: #cccccc;
+}
+
+.recording-controls-completed .restart-btn:hover {
+    background-color: #4c4c4c;
+}
+
+.recording-controls-completed .recording-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    background-color: #2d2d30;
+    border-radius: 8px;
+}
+
+.recording-controls-completed .info-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+
+.recording-controls-completed .info-label {
+    color: #8c8c8c;
+}
+
+.recording-controls-completed .info-value {
+    color: #cccccc;
+    font-weight: 500;
+}
+
+.recording-controls-completed .info-value.completed {
+    color: #10a37f;
+}
+
+.recording-controls-completed .info-value.time {
+    font-family: 'Courier New', monospace;
+}
+
+/* ============================================
+   모달 최소화 기능
+   ============================================ */
+.modal-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.minimize-btn {
+    background: none;
+    border: none;
+    color: #8c8c8c;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.minimize-btn:hover {
+    background-color: #3c3c3c;
+    color: #cccccc;
+}
+
+/* 녹음 미니바 (최소화 시 표시) */
+.recording-minibar {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #2d2d30 0%, #252526 100%);
+    border: 1px solid #3c3c3c;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 999;
+}
+
+.recording-minibar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    border-color: #10a37f;
+}
+
+.recording-minibar.active {
+    border-color: #10a37f;
+    background: linear-gradient(135deg, #10a37f15 0%, #252526 100%);
+}
+
+.minibar-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.minibar-icon {
+    width: 36px;
+    height: 36px;
+    background-color: #10a37f;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.recording-minibar.active .minibar-icon {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.minibar-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.minibar-status {
+    font-size: 13px;
+    font-weight: 600;
+    color: #cccccc;
+}
+
+.minibar-timer {
+    font-size: 12px;
+    color: #8c8c8c;
+    font-family: 'Courier New', monospace;
+}
+
+/* 녹음 버튼 스타일 개선 */
+.record-btn.primary {
+    background-color: #10a37f;
+}
+
+.record-btn.primary:hover {
+    background-color: #0d8f6f;
+}
+
+.record-btn.recording {
+    background-color: #ef4444;
+}
+
+.record-btn.recording:hover {
+    background-color: #dc2626;
+}
+
+.recording-controls-initial {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 디렉토리 트리 스타일 */
+.directory-tree {
+    padding: 8px;
+    overflow-y: auto;
+}
+
+.dir-node {
+    margin: 2px 0;
+}
+
+.dir-node-content {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    color: #cccccc;
+    user-select: none;
+}
+
+.dir-node-content:hover {
+    background-color: #2a2d2e;
+}
+
+.dir-arrow {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    color: #8c8c8c;
+    transition: transform 0.2s ease;
+}
+
+.dir-node.expanded > .dir-node-content .dir-arrow {
+    transform: rotate(90deg);
+}
+
+.dir-node-content i.fa-folder {
+    margin-right: 6px;
+    color: #dcb67a;
+    font-size: 14px;
+}
+
+.dir-node-content i.fa-file-alt {
+    margin-right: 6px;
+    color: #519aba;
+    font-size: 12px;
+}
+
+.dir-children {
+    margin-left: 20px;
+    display: none;
+}
+
+.dir-node.expanded > .dir-children {
+    display: block;
+}
+
+/* 컨텍스트 메뉴 */
+.context-menu {
+    position: fixed;
+    background-color: #252526;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #cccccc;
+    transition: background-color 0.2s ease;
+}
+
+.context-menu-item:hover {
+    background-color: #2a2d2e;
+}
+
+.context-menu-item i {
+    margin-right: 10px;
+    width: 16px;
+    color: #dcb67a;
+}
+
+.context-menu-delete {
+    color: #f48771;
+}
+
+.context-menu-delete:hover {
+    background-color: #5a1d1d;
+}
+
+.context-menu-delete i {
+    color: #f48771;
+}
+
+/* 디렉토리 빈 상태 */
+.directory-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.directory-empty button {
+    background: #007acc;
+    color: white;
+    border-radius: 4px;
+}
+
+.directory-empty button:hover {
+    background: #005a9e;
+}
+
+/* 선택된 작업 폴더 표시 */
+.dir-node.workspace-folder > .dir-node-content {
+    background-color: rgba(0, 122, 204, 0.15);
+    border-left: 3px solid #007acc;
+}
+
+.dir-node.workspace-folder > .dir-node-content i.fa-folder {
+    color: #007acc;
+}
+
+/* 선택된 subject 폴더 표시 */
+.dir-node.subject-folder > .dir-node-content {
+    background-color: rgba(76, 175, 80, 0.15);
+    border-left: 3px solid #4caf50;
+}
+
+.dir-node.subject-folder > .dir-node-content i.fa-folder {
+    color: #4caf50;
 }
