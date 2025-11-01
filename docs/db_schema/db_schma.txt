@@ -1,0 +1,80 @@
+Enum job_status { PENDING, PROCESSING, COMPLETED, FAILED }
+Enum material_status { UPLOADED, TRANSCRIBING, SUMMARIZING, COMPLETED, FAILED }
+
+//Table: subjects 디렉토리를 관리할 최상위 디렉토리
+Table workspaces {
+  id integer [pk, increment, note: '워크스페이스 고유 번호. ex: 10']
+  name varchar(255) [unique, not null, note: '워크스페이스 이름. ex: "개인 프로젝트", "팀 스터디"']
+  description text [note: '워크스페이스에 대한 설명']
+  created_at timestamptz [default: `now()`]
+}
+
+//Table: summary_jobs, transcription_segment, source_materials 3개의 파일이 들어있는 디렉토리
+Table subjects {
+  id integer [pk, increment, note: '과목의 고유 식별 번호. ex: 1']
+  workspace_id integer [not null, note: '이 과목이 속한 워크스페이스 ID (FK). ex: 10']
+  name varchar(255) [unique, not null, note: '과목의 이름. ex: "인공지능 개론"']
+  description text [note: '과목에 대한 부가적인 설명.']
+  created_at timestamptz [default: `now()`]
+}
+
+//Table: 최종 요약 작업 완료 파일
+Table summary_jobs {
+  id integer [pk, increment, note: '요약 작업의 고유 식별 번호. ex: 101']
+  subject_id integer [note: '이 요약 작업이 속한 과목의 ID (FK). ex: 1']
+  title varchar(255) [not null, note: '사용자가 지정한 요약 작업의 제목. ex: "3주차 - 강화학습의 이해"']
+  status job_status [not null, default: 'PENDING', note: '요약 작업의 전체적인 진행 상태. ex: "PROCESSING"']
+  final_summary text [note: '웹 화면 표시용 최종 요약 텍스트']
+  error_message text [note: '작업 실패 시 원인을 기록하는 곳.']
+  created_at timestamptz [default: `now()`, note: '작업 요청이 생성된 시간']
+  started_at timestamptz [note: '실제 작업 처리가 시작된 시간']
+  completed_at timestamptz [note: '작업이 완료 또는 실패 상태가 된 시간']
+
+  indexes { subject_id, status }
+}
+
+//Table: 사용자가 업로드한 raw한 파일
+Table source_materials {
+  id integer [pk, increment, note: '개별 입력 파일의 고유 식별 번호. ex: 501']
+  job_id integer [not null, note: '이 파일이 속한 요약 작업의 ID (FK). ex: 101']
+  source_type varchar [not null, note: '입력 파일의 종류. ex: "AUDIO", "PDF"']
+  original_filename varchar(255) [note: '사용자가 업로드한 파일의 원래 이름. ex: "lecture_week3.mp3"']
+  storage_path text [not null, note: '업로드된 원본 파일이 서버에 저장된 실제 경로.']
+  file_size_bytes bigint [note: '원본 파일의 크기 (바이트 단위).']
+  individual_summary text [note: '이 파일 하나만을 요약한 중간 결과물 텍스트.']
+  status material_status [not null, default: 'UPLOADED', note: '이 파일 하나의 처리 진행 상태.']
+  created_at timestamptz [default: `now()`]
+  // output_artifacts jsonb [note: '추가 결과 파일 경로 JSON 저장'] // AI 처리 과정에서 추가 결과물 저장할 컬럼, AI파트에서 필요하면 추
+}
+
+//Table: 발화자 구분 완료된 파일
+Table transcription_segments {
+  id integer [pk, increment]
+  material_id integer [not null, note: '어떤 원본 파일에서 추출되었는지 (FK)']
+  speaker_label varchar(50) [note: '예: "Speaker 1"']
+  start_time_seconds decimal(10, 4) [not null, note: '발화 시작 시간 (초)']
+  end_time_seconds decimal(10, 4) [not null, note: '발화 종료 시간 (초)']
+  text text [not null, note: '해당 구간의 텍스트 내용']
+
+  indexes { material_id }
+}
+
+Table job_stage_logs {
+  id integer [pk, increment]
+  job_id integer [not null, note: '어떤 요약 작업에 대한 로그인지 (FK)']
+  stage_name varchar(50) [not null, note: '예: "transcribe", "summarize"']
+  status job_status [not null, default: 'PENDING']
+  start_time timestamptz
+  end_time timestamptz
+  details jsonb [note: '처리 관련 메타데이터나 로그 저장용']
+
+  indexes { (job_id, stage_name) }
+}
+
+
+// -- 관계 정의 --
+Ref: subjects.workspace_id > workspaces.id [delete: cascade]
+Ref: summary_jobs.subject_id > subjects.id [delete: cascade]
+Ref: source_materials.job_id > summary_jobs.id [delete: cascade]
+Ref: transcription_segments.material_id > source_materials.id [delete: cascade]
+Ref: job_stage_logs.job_id > summary_jobs.id [delete: cascade]

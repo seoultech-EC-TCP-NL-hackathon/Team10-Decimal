@@ -13,7 +13,7 @@ Example
 >>> from .stages.diarize import DiarizeStage
 >>> orchestrator = PipelineOrchestrator([NormalizeStage(), DiarizeStage()])
 >>> ctx = StageContext(run_id='test', config=config, resources=resources,
-...                    base_dir=Path('apps/projects/test'), input_file=Path('audio.wav'))
+...                    base_dir=Path('apps/ai/output/test'), input_file=Path('audio.wav'))
 >>> orchestrator.run(ctx)
 """
 
@@ -70,3 +70,4 @@ class PipelineOrchestrator:
         storage.persist_run(context)
         print("[Pipeline] Run complete. Results persisted to storage.")
         return results
+

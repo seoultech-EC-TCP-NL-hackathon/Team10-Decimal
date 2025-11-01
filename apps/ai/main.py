@@ -13,7 +13,7 @@ Run this module as a script with the path to an input audio file:
 
    python -m project.apps.ai.main /path/to/audio.wav
 
-The results of the run will be saved under ``/apps/projects/<run_id>`` in
+The results of the run will be saved under ``/apps/ai/output/<run_id>`` in
 the project root and a summary will be printed to stdout.
 """
 
@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> None:
     project_root = Path(__file__).resolve().parents[2]
     config_path = project_root / "apps" / "ai" / "ai.config.json"
 
-    # 2) Bootstrap (hardware probe → model select/install → write ai.config.json)
+    # 2) Bootstrap (hardware probe ??model select/install ??write ai.config.json)
     ensure_models_ready(models_dir=None, config_json=config_path)
 
     # 3) Load config
@@ -97,3 +97,4 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+

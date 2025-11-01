@@ -133,7 +133,6 @@ class Resources:
 
                     self._whisper_model.to("cpu")
                 except Exception:
-                    # If moving the model to CPU fails, ignore the error and proceed to release the model.
                     pass
         except Exception:
             pass
@@ -158,6 +157,7 @@ class Resources:
         """Return the categorising language model or ``None`` if unavailable."""
         if self._llm_cat is None:
             repo_id = self.config.selected_models.get("llm_cat_repo_id")
+            pattern = self.config.selected_models.get("llm_cat_allow_pattern")
             if not repo_id:
                 return None
             # Try to load from HuggingFace via transformers if installed

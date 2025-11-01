@@ -3,7 +3,7 @@ Persist pipeline run artifacts to the filesystem.
 
 This module defines simple routines for writing the intermediate and
 final results of a pipeline run into structured directories under
-``apps/projects/<run_id>``. Stages write their outputs into
+``apps/ai/output/<run_id>``. Stages write their outputs into
 ``context.data``; here we serialise those outputs into JSON files,
 copy the processed audio chunks and write the final summary to a
 text file.
@@ -105,3 +105,4 @@ def persist_run(context: StageContext) -> None:
     summary = context.data.get("summary")
     if summary is not None:
         (run_dir / "summary.txt").write_text(str(summary), encoding="utf-8")
+

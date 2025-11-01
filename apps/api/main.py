@@ -10,6 +10,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from pathlib import Path
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 
