@@ -14,7 +14,6 @@ from typing import List, Dict
 
 import torch
 from ..base import BaseStage, StageContext, StageResult
-from ...types import TranscriptSegment
 
 
 class STTStage(BaseStage):
