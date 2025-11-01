@@ -4,12 +4,14 @@ let recordedChunks = [];
 let isRecording = false;
 let recordingTimer = null;
 let startTime = 0;
+let totalRecordingTime = 0; // 누적 녹음 시간
 let currentAudioFile = null;
 let sessionHistory = [];
 let projects = {};
 let openTabs = new Map(); // 열려있는 탭들
 let activeTabId = 'welcome';
 let tabCounter = 1;
+let isModalMinimized = false; // 모달 최소화 상태
 
 // VS Code 스타일 파일 시스템 시뮬레이션
 let fileSystem = {
@@ -185,10 +187,20 @@ function showRecordingModal(type) {
     const recordingControls = document.getElementById('recordingControls');
     const uploadControls = document.getElementById('uploadControls');
     
+    // 초기화
+    totalRecordingTime = 0;
+    recordedChunks = [];
+    isRecording = false;
+    currentAudioFile = null;
+    startTime = 0;
+    
     if (type === 'recording') {
         title.textContent = '실시간 녹음';
         recordingControls.style.display = 'block';
         uploadControls.style.display = 'none';
+        
+        // 버튼을 초기 상태로 리셋
+        resetToRecordingButton();
     } else {
         title.textContent = '파일 업로드';
         recordingControls.style.display = 'none';
@@ -196,8 +208,9 @@ function showRecordingModal(type) {
     }
     
     modal.classList.add('show');
+    isModalMinimized = false;
+    hideRecordingMinibar();
     disableSummarizeButton();
-    resetRecordingUI();
 }
 
 // 녹음 모달 닫기
@@ -210,9 +223,15 @@ function closeRecordingModal(keepState = false) {
     toggleRecording();
   }
 
+  // 미니바 숨김
+  hideRecordingMinibar();
+  isModalMinimized = false;
+
   // 상태 초기화 (요약 버튼에서 닫을 때는 keepState=true로 상태 유지)
   if (!keepState) {
     currentAudioFile = null;
+    totalRecordingTime = 0;
+    recordedChunks = [];
     disableSummarizeButton();
     const fileInput = document.getElementById('audioFile');
     if (fileInput) fileInput.value = '';
@@ -228,9 +247,6 @@ async function toggleRecording() {
     
     if (!isRecording) {
         try {
-            clearInterval(recordingTimer);
-            document.getElementById('recordingTimer').textContent = '00:00';
-
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     sampleRate: 44100,
@@ -254,6 +270,14 @@ async function toggleRecording() {
             mediaRecorder.onstop = function() {
                 const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
                 currentAudioFile = audioBlob;
+                
+                // 누적 시간 업데이트
+                if (startTime) {
+                    totalRecordingTime += Date.now() - startTime;
+                }
+                
+                // 녹음 완료 후 버튼 UI 변경
+                updateRecordingButtons();
                 enableSummarizeButton();
                 
                 showNotification('success', '녹음이 완료되었습니다!');
@@ -266,11 +290,12 @@ async function toggleRecording() {
             // UI 업데이트
             recordBtn.classList.add('recording');
             recordBtn.innerHTML = '<i class="fas fa-stop"></i><span>녹음 중지</span>';
-            timer.classList.remove('active');
-            timer.textContent = '00:00';
+            statusText.textContent = '녹음 중...';
+            timer.classList.add('active');
             
             // 타이머 시작
             recordingTimer = setInterval(updateTimer, 1000);
+            updateMinibarUI();
             
         } catch (error) {
             console.error('녹음 시작 실패:', error);
@@ -285,23 +310,184 @@ async function toggleRecording() {
         
         isRecording = false;
         clearInterval(recordingTimer);
-        
-        // UI 업데이트
-        recordBtn.classList.remove('recording');
-        recordBtn.innerHTML = '<i class="fas fa-microphone"></i><span>녹음 시작</span>';
-        statusText.textContent = '완료됨';
-        timer.classList.remove('active');
+        updateMinibarUI();
     }
 }
 
 // 녹음 타이머 업데이트
 function updateTimer() {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const elapsedMs = isRecording && startTime
+        ? totalRecordingTime + (Date.now() - startTime)
+        : totalRecordingTime;
+    
+    const elapsed = Math.floor(elapsedMs / 1000);
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     
     const timer = document.getElementById('recordingTimer');
-    timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const minibarTimer = document.getElementById('minibarTimer');
+    
+    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    
+    if (timer) timer.textContent = timeString;
+    if (minibarTimer) minibarTimer.textContent = timeString;
+}
+
+// 녹음 중지 후 버튼 UI 업데이트 (이어서 녹음 / 처음부터)
+function updateRecordingButtons() {
+    const recordingSection = document.querySelector('.recording-section');
+    
+    const timeString = formatTime(totalRecordingTime);
+    
+    recordingSection.innerHTML = `
+        <div class="recording-controls-completed">
+            <div class="button-group">
+                <button class="control-btn continue-btn" onclick="continueRecording()">
+                    <i class="fas fa-play"></i>
+                    <span>이어서 녹음</span>
+                </button>
+                <button class="control-btn restart-btn" onclick="restartRecording()">
+                    <i class="fas fa-redo"></i>
+                    <span>처음부터</span>
+                </button>
+            </div>
+            <div class="recording-info">
+                <div class="info-item">
+                    <span class="info-label">상태:</span>
+                    <span class="info-value completed">녹음 완료</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">총 시간:</span>
+                    <span class="info-value time">${timeString}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 시간 포맷 함수
+function formatTime(milliseconds) {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// 이어서 녹음
+async function continueRecording() {
+    // 버튼을 원래 녹음 버튼으로 되돌리기
+    resetToRecordingButton();
+    
+    // 녹음 시작
+    try {
+        await toggleRecording();
+    } catch (error) {
+        console.error('이어서 녹음 실패:', error);
+        showNotification('error', '녹음을 시작할 수 없습니다.');
+    }
+}
+
+// 처음부터 녹음
+async function restartRecording() {
+    if (confirm('기존 녹음을 삭제하고 처음부터 시작하시겠습니까?')) {
+        // 모든 녹음 데이터 초기화
+        recordedChunks = [];
+        totalRecordingTime = 0;
+        currentAudioFile = null;
+        startTime = 0;
+        
+        // 버튼 초기화
+        resetToRecordingButton();
+        
+        // 요약 버튼 비활성화
+        disableSummarizeButton();
+        
+        // 녹음 시작
+        try {
+            await toggleRecording();
+        } catch (error) {
+            console.error('처음부터 녹음 실패:', error);
+            showNotification('error', '녹음을 시작할 수 없습니다.');
+        }
+    }
+}
+
+// 원래 녹음 버튼으로 되돌리기
+function resetToRecordingButton() {
+    const recordingSection = document.querySelector('.recording-section');
+    
+    recordingSection.innerHTML = `
+        <div class="recording-controls-initial">
+            <button class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
+                <i class="fas fa-microphone"></i>
+                <span>녹음 시작</span>
+            </button>
+            <div class="recording-status" id="recordingStatus">
+                <div class="status-row">
+                    <span class="status-text">준비됨</span>
+                    <div class="recording-timer" id="recordingTimer">00:00</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 모달 최소화
+function minimizeRecordingModal() {
+    const modal = document.getElementById('recordingModal');
+    if (!modal) return;
+    
+    modal.classList.remove('show');
+    isModalMinimized = true;
+    showRecordingMinibar();
+    updateMinibarUI();
+}
+
+// 모달 복원
+function restoreRecordingModal() {
+    const modal = document.getElementById('recordingModal');
+    const minibar = document.getElementById('recordingMinibar');
+    
+    if (modal) modal.classList.add('show');
+    if (minibar) minibar.style.display = 'none';
+    isModalMinimized = false;
+}
+
+// 미니바 표시
+function showRecordingMinibar() {
+    const minibar = document.getElementById('recordingMinibar');
+    if (!minibar) return;
+    minibar.style.display = 'flex';
+    updateMinibarUI();
+}
+
+// 미니바 숨김
+function hideRecordingMinibar() {
+    const minibar = document.getElementById('recordingMinibar');
+    if (!minibar) return;
+    minibar.style.display = 'none';
+}
+
+// 미니바 UI 업데이트
+function updateMinibarUI() {
+    const minibar = document.getElementById('recordingMinibar');
+    if (!minibar || minibar.style.display === 'none') return;
+
+    const statusEl = document.getElementById('minibarStatus');
+    if (statusEl) {
+        if (isRecording) {
+            statusEl.textContent = '녹음 중';
+            minibar.classList.add('active');
+        } else if (currentAudioFile) {
+            statusEl.textContent = '녹음 완료';
+            minibar.classList.remove('active');
+        } else {
+            statusEl.textContent = '대기';
+            minibar.classList.remove('active');
+        }
+    }
+    
+    updateTimer();
 }
 
 // 파일 업로드 처리
@@ -333,12 +519,26 @@ async function summarizeAudio() {
     return;
   }
 
+  // 요약 제목 입력받기 (기본값: 현재 날짜)
+  const today = new Date();
+  const defaultTitle = `강의_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  
+  const summaryTitle = prompt('요약 제목을 입력하세요:', defaultTitle);
+  
+  // 취소 버튼을 누르면 null이 반환됨
+  if (summaryTitle === null) {
+    return;
+  }
+  
+  // 빈 문자열이면 기본값 사용
+  const finalTitle = summaryTitle.trim() || defaultTitle;
+
   //버튼 누르자마자 모달 닫기(상태는 유지)
   closeRecordingModal(true);
 
   showLoading(true);
   try {
-    await simulateSummarization();
+    await simulateSummarization(finalTitle);
     // (이미 모달은 닫힌 상태이므로 여긴 다시 닫을 필요 없음)
   } catch (error) {
     console.error('요약 실패:', error);
@@ -350,7 +550,7 @@ async function summarizeAudio() {
 
 
 // 요약 시뮬레이션
-async function simulateSummarization() {
+async function simulateSummarization(summaryTitle) {
     await new Promise(resolve => setTimeout(resolve, 3000));
     
     const timestamp = new Date();
@@ -360,7 +560,7 @@ async function simulateSummarization() {
     const audioUrl = URL.createObjectURL(fileObj);
     const summary = {
         id: Date.now(),
-        title: `${fileName} 요약`,
+        title: summaryTitle || `${fileName} 요약`, // 사용자가 입력한 제목 사용
         fileName: fileName,
         content: generateMockSummary(),
         timestamp: timestamp.toLocaleString('ko-KR'),
@@ -1310,4 +1510,220 @@ async function sendTranscriptionRequest(opts = {}) {
         throw new Error(`전송 실패 ${res.status}: ${text || '서버 오류'}`);
     }
     return res.json().catch(() => ({}));
+}
+
+// ==== 오픈소스 정보 표시 ====
+function showOpenSourceInfo() {
+    const tabId = 'opensource';
+    
+    // 이미 열려있으면 해당 탭으로 전환
+    if (openTabs.has(tabId)) {
+        switchToTab(tabId);
+        return;
+    }
+    
+    // 탭 정보 저장
+    openTabs.set(tabId, {
+        id: tabId,
+        title: '오픈소스 정보',
+        type: 'opensource',
+        icon: 'fas fa-code',
+        closable: true
+    });
+    
+    // 탭 콘텐츠 생성
+    createOpenSourceTabContent(tabId);
+    
+    // 탭으로 전환
+    switchToTab(tabId);
+    
+    // 탭 바 업데이트
+    updateTabBar();
+}
+
+function createOpenSourceTabContent(tabId) {
+    const tabContents = document.querySelector('.tab-contents');
+    const tabContent = document.createElement('div');
+    tabContent.className = 'tab-content';
+    tabContent.id = `${tabId}-content`;
+    
+    tabContent.innerHTML = `
+        <div class="opensource-content">
+            <h2>오픈소스 라이선스 정보</h2>
+            
+            <h3>프론트엔드</h3>
+            <table class="opensource-table">
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>분류</th>
+                        <th>라이선스</th>
+                        <th>링크</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Font Awesome</strong></td>
+                        <td>UI/UX 라이브러리</td>
+                        <td>Font Awesome Free (Icons: CC BY 4.0, Code: MIT)</td>
+                        <td><a href="https://fontawesome.com/" target="_blank">fontawesome.com</a></td>
+                    </tr>
+                    <tr>
+                        <td>MediaRecorder API</td>
+                        <td>오디오/비디오 녹화</td>
+                        <td>표준 웹 API (무료)</td>
+                        <td><a href="https://w3c.github.io/mediacapture-record/" target="_blank">W3C 스펙</a></td>
+                    </tr>
+                    <tr>
+                        <td>Fetch API</td>
+                        <td>네트워크</td>
+                        <td>표준 웹 API (무료)</td>
+                        <td><a href="https://fetch.spec.whatwg.org/" target="_blank">WHATWG 스펙</a></td>
+                    </tr>
+                    <tr>
+                        <td>localStorage</td>
+                        <td>저장소</td>
+                        <td>표준 웹 API (무료)</td>
+                        <td><a href="https://html.spec.whatwg.org/multipage/webstorage.html" target="_blank">WHATWG 스펙</a></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>백엔드</h3>
+            <table class="opensource-table">
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>분류</th>
+                        <th>라이선스</th>
+                        <th>링크</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>FastAPI</strong></td>
+                        <td>라이브러리</td>
+                        <td>MIT</td>
+                        <td><a href="https://fastapi.tiangolo.com/" target="_blank">fastapi.tiangolo.com</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Uvicorn</strong></td>
+                        <td>라이브러리</td>
+                        <td>BSD 3-Clause</td>
+                        <td><a href="https://www.uvicorn.org/" target="_blank">uvicorn.org</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>SQLAlchemy</strong></td>
+                        <td>라이브러리</td>
+                        <td>MIT</td>
+                        <td><a href="https://www.sqlalchemy.org/" target="_blank">sqlalchemy.org</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>psycopg2-binary</strong></td>
+                        <td>라이브러리</td>
+                        <td>LGPL 3.0</td>
+                        <td><a href="https://pypi.org/project/psycopg2-binary/" target="_blank">PyPI</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pydantic</strong></td>
+                        <td>라이브러리</td>
+                        <td>MIT</td>
+                        <td><a href="https://docs.pydantic.dev/latest/" target="_blank">pydantic.dev</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>pydantic-settings</strong></td>
+                        <td>라이브러리</td>
+                        <td>MIT</td>
+                        <td><a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/" target="_blank">pydantic.dev</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>python-dotenv</strong></td>
+                        <td>라이브러리</td>
+                        <td>BSD 3-Clause</td>
+                        <td><a href="https://pypi.org/project/python-dotenv/" target="_blank">PyPI</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>PostgreSQL</strong></td>
+                        <td>DB 서버 (소프트웨어)</td>
+                        <td>PostgreSQL License</td>
+                        <td><a href="https://www.postgresql.org/" target="_blank">postgresql.org</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>python-multipart</strong></td>
+                        <td>라이브러리</td>
+                        <td>Apache License 2.0</td>
+                        <td><a href="https://pypi.org/project/python-multipart/" target="_blank">PyPI</a></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>AI</h3>
+            <table class="opensource-table">
+                <thead>
+                    <tr>
+                        <th>이름</th>
+                        <th>분류</th>
+                        <th>라이선스</th>
+                        <th>링크</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>openai/whisper-large-v3</strong></td>
+                        <td>STT 모델</td>
+                        <td>Apache License 2.0</td>
+                        <td><a href="https://huggingface.co/openai/whisper-large-v3" target="_blank">Hugging Face</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>openai-whisper</strong></td>
+                        <td>파이썬 모듈 (라이브러리)</td>
+                        <td>MIT License</td>
+                        <td><a href="https://pypi.org/project/openai-whisper/" target="_blank">PyPI</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Qwen3-4B-Thinking-2507-GGUF Q8_0</strong></td>
+                        <td>LLM 모델 (Refining)</td>
+                        <td>Apache License 2.0</td>
+                        <td><a href="https://huggingface.co/lmstudio-community/Qwen3-4B-Thinking-2507-GGUF" target="_blank">Hugging Face</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Qwen3-4B-Instruct-2507-GGUF Q4_K_M</strong></td>
+                        <td>LLM 모델 (Categorizing)</td>
+                        <td>Apache License 2.0</td>
+                        <td><a href="https://huggingface.co/lmstudio-community/Qwen3-4B-Instruct-2507-GGUF" target="_blank">Hugging Face</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>pyannote-audio</strong></td>
+                        <td>파이썬 모듈 (라이브러리)</td>
+                        <td>MIT License</td>
+                        <td><a href="https://pypi.org/project/pyannote-audio/" target="_blank">PyPI</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>pyannote/speaker-diarization-3.1</strong></td>
+                        <td>Diarization 모델</td>
+                        <td>MIT License</td>
+                        <td><a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">Hugging Face</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>llama-cpp-python</strong></td>
+                        <td>GGUF 모델 구동용 파이썬 모듈</td>
+                        <td>MIT License</td>
+                        <td><a href="https://pypi.org/project/llama-cpp-python/" target="_blank">PyPI</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>DeepSeek-R1-0528-Qwen3-8B-GGUF Q8_0</strong></td>
+                        <td>LLM 모델 (Refining)</td>
+                        <td>MIT License</td>
+                        <td><a href="https://huggingface.co/lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-GGUF" target="_blank">Hugging Face</a></td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="opensource-note">
+                <strong>참고:</strong> pyannote.audio 라이브러리와 라이브러리 내부적으로 사용되는 diarization 모델은 별개의 라이선스 대상입니다.
+            </div>
+        </div>
+    `;
+    
+    tabContents.appendChild(tabContent);
 }

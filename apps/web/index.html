@@ -69,6 +69,14 @@
             <p><kbd>Ctrl/Cmd + N</kbd> 새 세션</p>
             <p><kbd>Ctrl/Cmd + R</kbd> 녹음 시작/중지</p>
         </div>
+        
+        <!-- 오픈소스 정보 버튼 -->
+        <div class="opensource-info">
+            <button class="opensource-btn" onclick="showOpenSourceInfo()" title="오픈소스 라이선스">
+                <i class="fas fa-code"></i>
+                <span>오픈소스 정보</span>
+            </button>
+        </div>
     </div>
 
     <!-- 메인 콘텐츠 -->
@@ -130,21 +138,30 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3 id="modalTitle">실시간 녹음</h3>
-                    <button class="close-btn" onclick="closeRecordingModal()">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <div class="modal-header-actions">
+                        <button class="minimize-btn" onclick="minimizeRecordingModal()" title="최소화">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button class="close-btn" onclick="closeRecordingModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="modal-body">
                     <!-- 녹음 컨트롤 -->
                     <div class="recording-controls" id="recordingControls">
                         <div class="recording-section">
-                            <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
-                                <i class="fas fa-microphone"></i>
-                                <span>녹음 시작</span>
-                            </button>
-                            <div class="recording-status" id="recordingStatus">
-                                <span class="status-text">준비됨</span>
-                                <div class="recording-timer" id="recordingTimer">00:00</div>
+                            <div class="recording-controls-initial">
+                                <button class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
+                                    <i class="fas fa-microphone"></i>
+                                    <span>녹음 시작</span>
+                                </button>
+                                <div class="recording-status" id="recordingStatus">
+                                    <div class="status-row">
+                                        <span class="status-text">준비됨</span>
+                                        <div class="recording-timer" id="recordingTimer">00:00</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -188,8 +205,21 @@
                 <p>강의 내용 분석 중…</p>
             </div>
         </div>
-    </div>
 
+        <!-- 녹음 미니바 (최소화 시 표시) -->
+        <div class="recording-minibar" id="recordingMinibar" style="display: none;" onclick="restoreRecordingModal()">
+            <div class="minibar-content">
+                <div class="minibar-icon">
+                    <i class="fas fa-microphone"></i>
+                </div>
+                <div class="minibar-info">
+                    <span class="minibar-status" id="minibarStatus">녹음 중</span>
+                    <span class="minibar-timer" id="minibarTimer">00:00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="api.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
