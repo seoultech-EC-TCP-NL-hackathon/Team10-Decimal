@@ -19,8 +19,8 @@ from .database import SessionLocal, engine
 
 # --- 설정 (Configurations) ---
 models.Base.metadata.create_all(bind=engine)
-PROJECTS_BASE_DIR = Path(__file__).parent.parent / "apps" / "projects"
-AI_OUTPUT_DIR = Path(__file__).parent.parent / "apps" / "ai" / "output"
+PROJECTS_BASE_DIR = Path(__file__).parent.parent / "projects"
+AI_OUTPUT_DIR = Path(__file__).parent.parent / "ai" / "output"
 ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav",".flac",".ogg",".opus",".webm"}
 MAX_FILES = 10
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 # 10GB
