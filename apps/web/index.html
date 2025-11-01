@@ -37,27 +37,8 @@
                     </div>
                 </div>
                 <div class="panel-content">
-                    <!-- 프로젝트: 위쪽 -->
-                    <div class="projects-section">
-                        <div class="projects-header">
-                            <h4>프로젝트</h4>
-                            <div class="panel-controls">
-                                <button class="control-btn" onclick="createProjectFolder()" title="새 폴더">
-                                    <i class="fas fa-folder-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="file-tree" id="projectsList">
-                            <!-- 프로젝트 폴더/항목이 렌더링됩니다 -->
-                        </div>
-                    </div>
-                    <hr class="separator">
-                    <!-- 요약본: 아래쪽 (폴더에 속하지 않은 ‘미지정’만 표시) -->
-                    <div class="summaries-section">
-                        <h4 class="summaries-header">요약본</h4>
-                        <div class="summaries-list" id="summariesList">
-                            <!-- 미지정 요약들이 여기 표시됩니다 -->
-                        </div>
+                    <div class="summaries-list" id="summariesList">
+                        <!-- 요약 기록들이 여기에 동적으로 추가됩니다 -->
                     </div>
                 </div>
             </div>
@@ -68,14 +49,6 @@
             <h4>키보드 단축키</h4>
             <p><kbd>Ctrl/Cmd + N</kbd> 새 세션</p>
             <p><kbd>Ctrl/Cmd + R</kbd> 녹음 시작/중지</p>
-        </div>
-        
-        <!-- 오픈소스 정보 버튼 -->
-        <div class="opensource-info">
-            <button class="opensource-btn" onclick="showOpenSourceInfo()" title="오픈소스 라이선스">
-                <i class="fas fa-code"></i>
-                <span>오픈소스 정보</span>
-            </button>
         </div>
     </div>
 
@@ -138,30 +111,21 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h3 id="modalTitle">실시간 녹음</h3>
-                    <div class="modal-header-actions">
-                        <button class="minimize-btn" onclick="minimizeRecordingModal()" title="최소화">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <button class="close-btn" onclick="closeRecordingModal()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+                    <button class="close-btn" onclick="closeRecordingModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <div class="modal-body">
                     <!-- 녹음 컨트롤 -->
                     <div class="recording-controls" id="recordingControls">
                         <div class="recording-section">
-                            <div class="recording-controls-initial">
-                                <button class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
-                                    <i class="fas fa-microphone"></i>
-                                    <span>녹음 시작</span>
-                                </button>
-                                <div class="recording-status" id="recordingStatus">
-                                    <div class="status-row">
-                                        <span class="status-text">준비됨</span>
-                                        <div class="recording-timer" id="recordingTimer">00:00</div>
-                                    </div>
-                                </div>
+                            <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+                                <i class="fas fa-microphone"></i>
+                                <span>녹음 시작</span>
+                            </button>
+                            <div class="recording-status" id="recordingStatus">
+                                <span class="status-text">준비됨</span>
+                                <div class="recording-timer" id="recordingTimer">00:00</div>
                             </div>
                         </div>
                     </div>
@@ -169,16 +133,12 @@
                     <!-- 파일 업로드 -->
                     <div class="upload-controls" id="uploadControls" style="display: none;">
                         <div class="upload-area">
-                            <!-- 파일 다중 업로드 -->
-                            <input type="file" id="audioFile" accept="audio/*" multiple style="display: none;" onchange="handleFileUpload(event)">
+                            <input type="file" id="audioFile" accept="audio/*" style="display: none;" onchange="handleFileUpload(event)">
                             <div class="upload-drop-zone" onclick="document.getElementById('audioFile').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <p>클릭하여 파일 선택</p>
                                 <p class="upload-hint">또는 파일을 여기로 드래그하세요</p>
                             </div>
-
-                            <!-- 업로드 파일 확인 -->
-                            <div class="upload-preview" id="uploadPreview"></div>
                         </div>
                     </div>
 
@@ -209,22 +169,8 @@
                 <p>강의 내용 분석 중…</p>
             </div>
         </div>
-
-        <!-- 녹음 미니바 (최소화 시 표시) -->
-        <div class="recording-minibar" id="recordingMinibar" style="display: none;" onclick="restoreRecordingModal()">
-            <div class="minibar-content">
-                <div class="minibar-icon">
-                    <i class="fas fa-microphone"></i>
-                </div>
-                <div class="minibar-info">
-                    <span class="minibar-status" id="minibarStatus">녹음 중</span>
-                    <span class="minibar-timer" id="minibarTimer">00:00</span>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <script src="api.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

@@ -7,9 +7,10 @@ from fastapi import (
     FastAPI, Depends, HTTPException, UploadFile, File, Form, 
     BackgroundTasks, Response
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from typing import List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,7 +21,7 @@ from .database import SessionLocal, engine
 # --- 설정 (Configurations) ---
 models.Base.metadata.create_all(bind=engine)
 UPLOAD_DIR = Path("./uploads")
-ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav",".flac",".ogg",".opus",".webm"}
+ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav","flac","ogg","opus","webm"}
 MAX_FILES = 1
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 # 10GB
 
@@ -118,6 +119,7 @@ def run_ai_processing(job_id: int):
         db.add(transcribe_log)
         db.commit()
         
+        all_individual_summaries = []
         for material in job.source_materials:
             material.status = models.MaterialStatus.TRANSCRIBING
             db.commit()
@@ -234,7 +236,7 @@ def read_subjects(workspace_id: Optional[int] = None, db: Session = Depends(get_
 def delete_subject(subject_id: int, db: Session = Depends(get_db)):
     subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
     if not subject:
-        raise HTTPException(status_code=404, detail=f"Subject with id {subject_id} not found.")
+        raise HTTPException(status_code=4404, detail=f"Subject with id {subject_id} not found.")
     db.delete(subject)
     db.commit()
     return Response(status_code=204)

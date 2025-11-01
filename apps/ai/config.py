@@ -35,7 +35,7 @@ class Config:
         models (``payload['selected']``).
     runs_dir: Path
         Base directory where pipeline runs will be stored. Each run
-        creates a subdirectory under this path (``apps/projects/<run_id>``).
+        creates a subdirectory under this path (``apps/ai/output/<run_id>``).
     """
 
     root_dir: Path
@@ -70,7 +70,7 @@ class Config:
                 f"Configuration file '{cfg}' not found. Did you run the bootstrap/manager?"
             )
         payload = json.loads(cfg.read_text(encoding="utf-8"))
-        runs_dir = base / "apps" / "projects"
+        runs_dir = base / "apps" / "ai" / "output"
         return cls(root_dir=base, config_path=cfg, payload=payload, runs_dir=runs_dir)
 
     # Convenience properties
@@ -83,3 +83,5 @@ class Config:
     def hardware(self) -> Dict[str, Any]:
         """Return the hardware description dictionary from the payload."""
         return self.payload.get("hardware", {})
+
+

@@ -4,15 +4,11 @@ let recordedChunks = [];
 let isRecording = false;
 let recordingTimer = null;
 let startTime = 0;
-let totalRecordingTime = 0; // 누적 녹음 시간
 let currentAudioFile = null;
-let selectedFiles = [];
 let sessionHistory = [];
-let projects = {};
 let openTabs = new Map(); // 열려있는 탭들
 let activeTabId = 'welcome';
 let tabCounter = 1;
-let isModalMinimized = false; // 모달 최소화 상태
 
 // VS Code 스타일 파일 시스템 시뮬레이션
 let fileSystem = {
@@ -40,12 +36,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initializeApp();
     loadSessionHistory();
-    loadProjects();
     initializeTabs();
     setupSidebarTabs();
 
     switchSidebarPanel('summaries');
-    renderProjects();
 });
 
 // 앱 초기화
@@ -188,34 +182,19 @@ function showRecordingModal(type) {
     const recordingControls = document.getElementById('recordingControls');
     const uploadControls = document.getElementById('uploadControls');
     
-    // 초기화
-    totalRecordingTime = 0;
-    recordedChunks = [];
-    isRecording = false;
-    currentAudioFile = null;
-    startTime = 0;
-    
     if (type === 'recording') {
         title.textContent = '실시간 녹음';
         recordingControls.style.display = 'block';
         uploadControls.style.display = 'none';
-        
-        // 버튼을 초기 상태로 리셋
-        resetToRecordingButton();
     } else {
         title.textContent = '파일 업로드';
         recordingControls.style.display = 'none';
         uploadControls.style.display = 'block';
-
-        selectedFiles = [];
-        const prev = document.getElementById('uploadPreview');
-        if(prev) prev.innerHTML = '';
     }
     
     modal.classList.add('show');
-    isModalMinimized = false;
-    hideRecordingMinibar();
     disableSummarizeButton();
+    resetRecordingUI();
 }
 
 // 녹음 모달 닫기
@@ -228,15 +207,9 @@ function closeRecordingModal(keepState = false) {
     toggleRecording();
   }
 
-  // 미니바 숨김
-  hideRecordingMinibar();
-  isModalMinimized = false;
-
   // 상태 초기화 (요약 버튼에서 닫을 때는 keepState=true로 상태 유지)
   if (!keepState) {
     currentAudioFile = null;
-    totalRecordingTime = 0;
-    recordedChunks = [];
     disableSummarizeButton();
     const fileInput = document.getElementById('audioFile');
     if (fileInput) fileInput.value = '';
@@ -252,6 +225,9 @@ async function toggleRecording() {
     
     if (!isRecording) {
         try {
+            clearInterval(recordingTimer);
+            document.getElementById('recordingTimer').textContent = '00:00';
+
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 audio: {
                     sampleRate: 44100,
@@ -275,14 +251,6 @@ async function toggleRecording() {
             mediaRecorder.onstop = function() {
                 const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
                 currentAudioFile = audioBlob;
-                
-                // 누적 시간 업데이트
-                if (startTime) {
-                    totalRecordingTime += Date.now() - startTime;
-                }
-                
-                // 녹음 완료 후 버튼 UI 변경
-                updateRecordingButtons();
                 enableSummarizeButton();
                 
                 showNotification('success', '녹음이 완료되었습니다!');
@@ -295,12 +263,14 @@ async function toggleRecording() {
             // UI 업데이트
             recordBtn.classList.add('recording');
             recordBtn.innerHTML = '<i class="fas fa-stop"></i><span>녹음 중지</span>';
-            statusText.textContent = '녹음 중...';
+            statusText.textContent = '녹음 중';
             timer.classList.add('active');
+            statusText.textContent = '완료됨';
+            timer.classList.remove('active');
+            timer.textContent = '00:00';
             
             // 타이머 시작
             recordingTimer = setInterval(updateTimer, 1000);
-            updateMinibarUI();
             
         } catch (error) {
             console.error('녹음 시작 실패:', error);
@@ -315,368 +285,101 @@ async function toggleRecording() {
         
         isRecording = false;
         clearInterval(recordingTimer);
-        updateMinibarUI();
+        
+        // UI 업데이트
+        recordBtn.classList.remove('recording');
+        recordBtn.innerHTML = '<i class="fas fa-microphone"></i><span>녹음 시작</span>';
+        statusText.textContent = '완료됨';
+        timer.classList.remove('active');
     }
 }
 
 // 녹음 타이머 업데이트
 function updateTimer() {
-    const elapsedMs = isRecording && startTime
-        ? totalRecordingTime + (Date.now() - startTime)
-        : totalRecordingTime;
-    
-    const elapsed = Math.floor(elapsedMs / 1000);
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
     const minutes = Math.floor(elapsed / 60);
     const seconds = elapsed % 60;
     
     const timer = document.getElementById('recordingTimer');
-    const minibarTimer = document.getElementById('minibarTimer');
-    
-    const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    
-    if (timer) timer.textContent = timeString;
-    if (minibarTimer) minibarTimer.textContent = timeString;
-}
-
-// 녹음 중지 후 버튼 UI 업데이트 (이어서 녹음 / 처음부터)
-function updateRecordingButtons() {
-    const recordingSection = document.querySelector('.recording-section');
-    
-    const timeString = formatTime(totalRecordingTime);
-    
-    recordingSection.innerHTML = `
-        <div class="recording-controls-completed">
-            <div class="button-group">
-                <button class="control-btn continue-btn" onclick="continueRecording()">
-                    <i class="fas fa-play"></i>
-                    <span>이어서 녹음</span>
-                </button>
-                <button class="control-btn restart-btn" onclick="restartRecording()">
-                    <i class="fas fa-redo"></i>
-                    <span>처음부터</span>
-                </button>
-            </div>
-            <div class="recording-info">
-                <div class="info-item">
-                    <span class="info-label">상태:</span>
-                    <span class="info-value completed">녹음 완료</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">총 시간:</span>
-                    <span class="info-value time">${timeString}</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// 시간 포맷 함수
-function formatTime(milliseconds) {
-    const totalSeconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-// 이어서 녹음
-async function continueRecording() {
-    // 버튼을 원래 녹음 버튼으로 되돌리기
-    resetToRecordingButton();
-    
-    // 녹음 시작
-    try {
-        await toggleRecording();
-    } catch (error) {
-        console.error('이어서 녹음 실패:', error);
-        showNotification('error', '녹음을 시작할 수 없습니다.');
-    }
-}
-
-// 처음부터 녹음
-async function restartRecording() {
-    if (confirm('기존 녹음을 삭제하고 처음부터 시작하시겠습니까?')) {
-        // 모든 녹음 데이터 초기화
-        recordedChunks = [];
-        totalRecordingTime = 0;
-        currentAudioFile = null;
-        startTime = 0;
-        
-        // 버튼 초기화
-        resetToRecordingButton();
-        
-        // 요약 버튼 비활성화
-        disableSummarizeButton();
-        
-        // 녹음 시작
-        try {
-            await toggleRecording();
-        } catch (error) {
-            console.error('처음부터 녹음 실패:', error);
-            showNotification('error', '녹음을 시작할 수 없습니다.');
-        }
-    }
-}
-
-// 원래 녹음 버튼으로 되돌리기
-function resetToRecordingButton() {
-    const recordingSection = document.querySelector('.recording-section');
-    
-    recordingSection.innerHTML = `
-        <div class="recording-controls-initial">
-            <button class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
-                <i class="fas fa-microphone"></i>
-                <span>녹음 시작</span>
-            </button>
-            <div class="recording-status" id="recordingStatus">
-                <div class="status-row">
-                    <span class="status-text">준비됨</span>
-                    <div class="recording-timer" id="recordingTimer">00:00</div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// 모달 최소화
-function minimizeRecordingModal() {
-    const modal = document.getElementById('recordingModal');
-    if (!modal) return;
-    
-    modal.classList.remove('show');
-    isModalMinimized = true;
-    showRecordingMinibar();
-    updateMinibarUI();
-}
-
-// 모달 복원
-function restoreRecordingModal() {
-    const modal = document.getElementById('recordingModal');
-    const minibar = document.getElementById('recordingMinibar');
-    
-    if (modal) modal.classList.add('show');
-    if (minibar) minibar.style.display = 'none';
-    isModalMinimized = false;
-}
-
-// 미니바 표시
-function showRecordingMinibar() {
-    const minibar = document.getElementById('recordingMinibar');
-    if (!minibar) return;
-    minibar.style.display = 'flex';
-    updateMinibarUI();
-}
-
-// 미니바 숨김
-function hideRecordingMinibar() {
-    const minibar = document.getElementById('recordingMinibar');
-    if (!minibar) return;
-    minibar.style.display = 'none';
-}
-
-// 미니바 UI 업데이트
-function updateMinibarUI() {
-    const minibar = document.getElementById('recordingMinibar');
-    if (!minibar || minibar.style.display === 'none') return;
-
-    const statusEl = document.getElementById('minibarStatus');
-    if (statusEl) {
-        if (isRecording) {
-            statusEl.textContent = '녹음 중';
-            minibar.classList.add('active');
-        } else if (currentAudioFile) {
-            statusEl.textContent = '녹음 완료';
-            minibar.classList.remove('active');
-        } else {
-            statusEl.textContent = '대기';
-            minibar.classList.remove('active');
-        }
-    }
-    
-    updateTimer();
+    timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 // 파일 업로드 처리
 function handleFileUpload(event) {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-
-    const valid = [];
-    for (const f of files) {
-        if (!f.type.startsWith('audio/')) {
-            showNotification('error', `오디오만 업로드 가능합니다: ${f.name}`);
-            continue;
-        }
-        if (f.size > 100 * 1024 * 1024) {
-            showNotification('error', `100MB 초과: ${f.name}`);
-            continue;
-        }
-        valid.push(f);
-    }
-
-    // 새로 선택한 파일들을 누적 (중복 파일명은 뒤에 (2) 같은 꼬리표 붙이기)
-    for (const f of valid) {
-        selectedFiles.push(ensureUniqueFileName(f));
-    }
-
-    // 단일 파일 로직 호환: 첫 파일을 currentAudioFile로 잡아둠
-    currentAudioFile = selectedFiles[0] || null;
-
-    renderUploadPreview();
-    updateSummarizeButtonBySelection();
-    showNotification('success', `${valid.length}개 파일이 추가되었습니다.`);
-}
-
-function updateSummarizeButtonBySelection() {
-    if (selectedFiles.length > 0 || currentAudioFile) enableSummarizeButton();
-    else disableSummarizeButton();
-}
-
-function ensureUniqueFileName(file) {
-    const base = file.name;
-    let name = base;
-    let count = 2;
-    const exists = () => selectedFiles.some(sf => sf.name === name);
-    while (exists()) {
-        const dot = base.lastIndexOf('.');
-        if (dot > -1) {
-            name = `${base.slice(0, dot)} (${count})${base.slice(dot)}`;
-        } else {
-            name = `${base} (${count})`;
-        }
-        count++;
-    }
-    // File 이름만 바꾸고 내용은 그대로 유지
-    return new File([file], name, { type: file.type });
-}
-
-function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return '';
-    const units = ['B','KB','MB','GB'];
-    let v = bytes, i = 0;
-    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
-}
-
-function renderUploadPreview() {
-    const wrap = document.getElementById('uploadPreview');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-
-    selectedFiles.forEach((file, idx) => {
-        const item = document.createElement('div');
-        item.className = 'upload-item';
-
-        // duration 구하려면 오디오 메타를 읽는다 (비동기)
-        const url = URL.createObjectURL(file);
-
-        item.innerHTML = `
-        <div class="file-icon"><i class="fas fa-file-audio"></i></div>
-        <div class="file-meta">
-            <div class="file-name" title="${file.name}">${file.name}</div>
-            <div class="file-size">${formatBytes(file.size)} <span class="file-duration" id="dur-${idx}"></span></div>
-        </div>
-        <button class="remove-btn" onclick="removeSelectedFile(${idx})">
-            제거
-        </button>
-        `;
-        wrap.appendChild(item);
-
-        // 길이 읽기 (선택 기능)
-        const audio = new Audio();
-        audio.preload = 'metadata';
-        audio.src = url;
-        audio.onloadedmetadata = () => {
-        const sec = Math.floor(audio.duration || 0);
-        const mm = String(Math.floor(sec / 60)).padStart(2, '0');
-        const ss = String(sec % 60).padStart(2, '0');
-        const slot = document.getElementById(`dur-${idx}`);
-        if (slot) slot.textContent = ` • ${mm}:${ss}`;
-        URL.revokeObjectURL(url);
-        };
-    });
-}
-
-function removeSelectedFile(index) {
-    if (index < 0 || index >= selectedFiles.length) return;
-    selectedFiles.splice(index, 1);
-    // 단일 호환 변수 갱신
-    currentAudioFile = selectedFiles[0] || null;
-    renderUploadPreview();
-    updateSummarizeButtonBySelection();
-}
-
-async function summarizeAudio() {
-    // 업로드 모드: selectedFiles가 있으면 그걸로, 아니면 녹음(Blob) 1개
-    const hasUploads = selectedFiles.length > 0;
-    const files = hasUploads ? selectedFiles : (currentAudioFile ? [currentAudioFile] : []);
-
-    if (files.length === 0) {
-        showNotification('error', '먼저 오디오를 녹음하거나 파일을 업로드해주세요.');
+    const file = event.target.files[0];
+    
+    if (!file) return;
+    
+    if (!file.type.startsWith('audio/')) {
+        showNotification('error', '오디오 파일만 업로드할 수 있습니다.');
         return;
     }
-
-    // 제목 입력
-    const today = new Date();
-    const defaultTitle = `강의_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const inputTitle = prompt('요약 제목을 입력하세요:', defaultTitle);
-    if (inputTitle === null) return; // 취소
-    const baseTitle = (inputTitle.trim() || defaultTitle);
-
-    // 모달은 닫되 상태 유지
-    closeRecordingModal(true);
-
-    showLoading(true);
-    try {
-        // ✅ 여러 개면 각각 요약 생성
-        for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        const isMulti = files.length > 1;
-        const title = isMulti ? `${baseTitle} - ${f.name}` : baseTitle;
-        await simulateSummarizationForFile(title, f);
-        }
-        showNotification('success', `${files.length}개 요약이 생성되었습니다.`);
-    } catch (err) {
-        console.error(err);
-        showNotification('error', '요약 중 오류가 발생했습니다. 다시 시도해주세요.');
-    } finally {
-        showLoading(false);
-        // 완료 후 업로드 선택 목록 초기화(선택)
-        selectedFiles = [];
-        const prev = document.getElementById('uploadPreview');
-        if (prev) prev.innerHTML = '';
-        updateSummarizeButtonBySelection();
+    
+    if (file.size > 100 * 1024 * 1024) {
+        showNotification('error', '파일 크기는 100MB 이하여야 합니다.');
+        return;
     }
+    
+    currentAudioFile = file;
+    enableSummarizeButton();
+    
+    showNotification('success', `파일 "${file.name}"이 업로드되었습니다.`);
 }
 
+// 요약 생성
+async function summarizeAudio() {
+  if (!currentAudioFile) {
+    showNotification('error', '먼저 오디오를 녹음하거나 파일을 업로드해주세요.');
+    return;
+  }
+
+  //버튼 누르자마자 모달 닫기(상태는 유지)
+  closeRecordingModal(true);
+
+  showLoading(true);
+  try {
+    await simulateSummarization();
+    // (이미 모달은 닫힌 상태이므로 여긴 다시 닫을 필요 없음)
+  } catch (error) {
+    console.error('요약 실패:', error);
+    showNotification('error', '요약 중 오류가 발생했습니다. 다시 시도해주세요.');
+  } finally {
+    showLoading(false);
+  }
+}
+
+
 // 요약 시뮬레이션
-async function simulateSummarizationForFile(summaryTitle, fileObjInput) {
-    await new Promise(resolve => setTimeout(resolve, 1200)); // 파일당 1.2초 딜레이(시뮬)
-
+async function simulateSummarization() {
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
     const timestamp = new Date();
-    const fileObj = normalizeAudioFile(fileObjInput);
-    const fileName = fileObj instanceof File ? fileObj.name : `recording_${timestamp.getTime()}.webm`;
-
-    // 재생용 URL
-    const audioUrl = URL.createObjectURL(fileObj);
-
+    const fileName = currentAudioFile instanceof File ? 
+        currentAudioFile.name : 
+        `recording_${timestamp.getTime()}.webm`;
+    
     const summary = {
-        id: Date.now() + Math.floor(Math.random() * 1000), // 겹침 방지
-        title: summaryTitle || `${fileName} 요약`,
-        fileName,
+        id: Date.now(),
+        title: `${fileName} 요약`,
+        fileName: fileName,
         content: generateMockSummary(),
         timestamp: timestamp.toLocaleString('ko-KR'),
-        type: fileObjInput instanceof File ? 'file' : 'recording',
-        audioUrl,
-        mimeType: fileObj.type || 'audio/webm',
-        fileSize: fileObj.size || 0
+        type: currentAudioFile instanceof File ? 'file' : 'recording'
     };
-
+    
+    // 탭으로 요약 결과 표시
     createSummaryTab(summary);
+    
+    // 파일 시스템에 추가
     addToFileSystem(summary);
+    
+    // 히스토리에 추가
     addToHistory(summary);
+    
+    // UI 업데이트
     if (document.getElementById('recordingsFolder') || document.getElementById('summariesFolder')) {
         updateFileTree();
-    }
+    }   
     updateSummariesList();
     updateRecentItems();
 }
@@ -781,7 +484,11 @@ function createTabContent(tabId, summary) {
         <div class="result-row">
           <button class="btn active" id="show-summary-${tabId}" onclick="showResult('${tabId}','summary')">요약본</button>
           <button class="btn" id="show-raw-${tabId}" onclick="showResult('${tabId}','raw')">화자 구분</button>
-          <button class="btn" id="show-plain-${tabId}" onclick="showResult('${tabId}','plain')">오디오 파일</button>
+          <button class="btn" id="show-plain-${tabId}" onclick="showResult('${tabId}','plain')">전체 텍스트</button>
+          
+          <button class="btn ghost" title="텍스트 복사" onclick="copyResultText('${tabId}')" style="max-width:120px;">
+            <i class="fas fa-copy"></i>&nbsp;<span>복사</span>
+          </button>
         </div>
         <div id="output-${tabId}" class="resultbox">
           ${markdownToHtml(summary.content)}
@@ -795,8 +502,6 @@ function createTabContent(tabId, summary) {
 
 function showResult(tabId, type) {
     const output = document.getElementById(`output-${tabId}`);
-    const tabMeta = openTabs.get(tabId);
-    const summary = tabMeta?.data;
     const btns = [
         document.getElementById(`show-summary-${tabId}`),
         document.getElementById(`show-raw-${tabId}`),
@@ -808,53 +513,16 @@ function showResult(tabId, type) {
         // 더미 데이터(추후 API 연결 예정)
         case 'summary':
             btns[0].classList.add('active');
-            output.innerHTML = `
-                <div class="content-body">
-                    ${markdownToHtml(generateMockSummary())}
-                </div>
-                <div class="copy-row">
-                    <button class="btn copy-btn" onclick="copyResultText('${tabId}')" title="텍스트 복사">
-                        <i class="fas fa-copy"></i><span>&nbsp;텍스트 복사</span>
-                    </button>
-                </div>
-            `;
+            output.innerHTML = markdownToHtml(generateMockSummary());
             break;
         case 'raw':
             btns[1].classList.add('active');
-            output.innerHTML = `
-                <div class="content-body">
-                    <p><strong>[화자1]</strong> HTML은 프로그래밍 언어인가요?<br><strong>[화자2]</strong> 네.</p>
-                </div>
-                <div class="copy-row">
-                    <button class="btn copy-btn" onclick="copyResultText('${tabId}')" title="텍스트 복사">
-                        <i class="fas fa-copy"></i><span>&nbsp;텍스트 복사</span>
-                    </button>
-                </div>
-            `;
+            output.innerHTML = `<p><strong>[화자1]</strong> HTML은 프로그래밍 언어인가요?<br><strong>[화자2]</strong> 네.</p>`;
             break;
         case 'plain':
             btns[2].classList.add('active');
-            if (summary?.audioUrl) {
-                const niceSize = summary.fileSize ? ` (${(summary.fileSize/1024/1024).toFixed(1)} MB)` : '';
-                output.innerHTML = `
-                    <div class="audio-player">
-                        <audio controls src="${summary.audioUrl}"></audio>
-                        <div class="audio-meta">
-                            <i class="fas fa-file-audio"></i>
-                            <span>${summary.fileName}${niceSize}</span>
-                            <a class="audio-download" href="${summary.audioUrl}" download="${summary.fileName}">다운로드</a>
-                        </div>
-                    </div>
-                `;
-        } else {
-            output.innerHTML = `
-                <div class="audio-missing">
-                    <i class="fas fa-info-circle"></i>
-                    <span>이 세션에 연결된 오디오 파일이 없습니다.<br>새로 요약을 생성하면 재생기가 표시됩니다.</span>
-                </div>
-            `;
-        }
-        break;
+            output.innerHTML = `<p>안녕하세요. 오늘 수업은 여기까지입니다.</p>`;
+            break;
     }
 }
 
@@ -963,7 +631,7 @@ function addToFileSystem(summary) {
     };
 }
 
-// 폴더 DOM이 없으면 스킵
+// ✅ 폴더 DOM이 없으면 조용히 스킵
 function updateFileTree() {
   const rec = document.getElementById('recordingsFolder');
   const sum = document.getElementById('summariesFolder');
@@ -974,7 +642,7 @@ function updateFileTree() {
 
 function updateFolderContents(folderId, children) {
   const folder = document.getElementById(folderId);
-  if (!folder) return; // 안전 가드
+  if (!folder) return; // ✅ 안전 가드
   folder.innerHTML = '';
   Object.values(children).forEach(item => {
     const itemElement = document.createElement('div');
@@ -1034,162 +702,6 @@ function addToHistory(summary) {
     updateRecentItems();
 }
 
-// 프로젝트 저장
-function saveProjects() {
-  try {
-    localStorage.setItem('vscode_lectureAI_projects_v2', JSON.stringify(projects));
-  } catch (e) { console.error('프로젝트 저장 실패', e); }
-}
-
-// 프로젝트 불러오기
-function loadProjects() {
-  try {
-    const saved = localStorage.getItem('vscode_lectureAI_projects_v2');
-    projects = saved ? JSON.parse(saved) : {};
-  } catch (e) { projects = {}; }
-}
-
-// 프로젝트 ID 생성/검사, 할당 여부
-function slugify(name){
-  return name.toLowerCase().trim().replace(/[^\w\-]+/g,'-').replace(/\-+/g,'-');
-}
-function isAssigned(summaryId){
-  return Object.values(projects).some(p => Array.isArray(p.items) && p.items.includes(summaryId));
-}
-
-// 프로젝트 생성
-function createProjectFolder(){
-  const name = (prompt('프로젝트 폴더 이름', '새 프로젝트') || '').trim();
-  if (!name) return;
-  let id = slugify(name) || `p_${Date.now()}`;
-  if (projects[id]) { id = `${id}-${Date.now()}`; }
-  projects[id] = { name, items: [], expanded: true };
-  saveProjects(); renderProjects();
-}
-
-// 프로젝트 이름 바꾸기
-function renameProjectFolder(id, e){
-  if (e) e.stopPropagation();
-  const folder = projects[id]; if (!folder) return;
-  const nm = prompt('새 폴더 이름', folder.name);
-  if (nm === null) return;
-  const name = nm.trim(); if (!name) return;
-  folder.name = name;
-  saveProjects(); renderProjects();
-}
-
-// 프로젝트 삭제
-function deleteProjectFolder(id, e){
-    if (e) e.stopPropagation();
-    const folder = projects[id];
-    if (!folder) return;
-    if (!confirm(`"${folder.name}" 폴더와 그 안의 모든 요약을 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) return;
-
-    // 폴더 안의 요약들을 먼저 하드 삭제
-    const toDelete = Array.isArray(folder.items) ? [...folder.items] : [];
-    toDelete.forEach(hardDeleteSummaryById);
-
-    // 폴더 제거
-    delete projects[id];
-    saveProjects();
-    renderProjects();
-    updateSummariesList();
-    updateRecentItems();
-    saveSessionHistory();
-    showNotification('success','폴더와 내부 요약이 모두 삭제되었습니다.');
-}
-
-// 사이드바에서 개별 삭제에 쓰는 로직을 재사용하기 위한 내부 헬퍼
-function hardDeleteSummaryById(id){
-  const idx = findSummaryIndexById(id);
-  if (idx === -1) return;
-  const summary = sessionHistory[idx];
-  // 1) 히스토리에서 제거
-    sessionHistory.splice(idx, 1);
-  // 2) 파일시스템에서 제거
-  removeFromFileSystem(summary);
-  // 3) 열려있는 탭 닫기
-  const tabId = `summary_${summary.id}`;
-  if (openTabs.has(tabId)) {
-    closeTab(tabId);
-  }
-}
-
-
-// 드래그 방식으로 프로젝트로 요약본 옮기기
-function addSummaryToProject(folderId, summaryId){
-  const folder = projects[folderId]; if (!folder) return;
-  if (!folder.items) folder.items = [];
-  // 중복 방지
-  if (!folder.items.includes(summaryId)){
-    folder.items.push(summaryId);
-    // 다른 폴더에 이미 있던 경우 제거(= ‘이동’ 보장)
-    Object.entries(projects).forEach(([id, f])=>{
-      if (id!==folderId && Array.isArray(f.items)) {
-        f.items = f.items.filter(x => x!==summaryId);
-      }
-    });
-    saveProjects();
-    renderProjects();          // 폴더 내부 반영
-    updateSummariesList();     // 아래 ‘요약본(미지정)’에서 제거
-    showNotification('success','프로젝트로 이동했습니다.');
-  }
-}
-
-// 프로젝트 트리 렌더
-function renderProjects(){
-  const wrap = document.getElementById('projectsList');
-  if (!wrap) return;
-  wrap.innerHTML = '';
-  Object.entries(projects).forEach(([id, p])=>{
-    const node = document.createElement('div');
-    node.className = `tree-node folder ${p.expanded?'expanded':''}`;
-    node.innerHTML = `
-      <div class="tree-node-content" data-folder-id="${id}">
-        <i class="fas fa-folder"></i>
-        <span class="folder-name">${p.name}</span>
-        <div class="node-actions">
-          <button class="icon" title="이름 변경" onclick="renameProjectFolder('${id}', event)"><i class="fas fa-pen"></i></button>
-          <button class="icon" title="삭제" onclick="deleteProjectFolder('${id}', event)"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-      <div class="tree-children"></div>
-    `;
-    const header = node.querySelector('.tree-node-content');
-    header.addEventListener('click', (e)=>{
-      // 액션버튼 누른 경우는 토글 막기
-      if (e.target.closest('.node-actions')) return;
-      p.expanded = !p.expanded; node.classList.toggle('expanded'); saveProjects();
-    });
-    // 드롭 타깃
-    header.addEventListener('dragover', (e)=>{ e.preventDefault(); header.classList.add('drop-target'); });
-    header.addEventListener('dragleave', ()=> header.classList.remove('drop-target'));
-    header.addEventListener('drop', (e)=>{
-      e.preventDefault(); header.classList.remove('drop-target');
-      const sid = Number(e.dataTransfer.getData('text/summaryId'));
-      if (sid) addSummaryToProject(id, sid);
-    });
-
-    // 자식 요약 렌더
-    const box = node.querySelector('.tree-children');
-    (p.items||[]).forEach(sid=>{
-      const s = sessionHistory.find(x=>x.id===sid);
-      if (!s) return;
-      const item = document.createElement('div');
-      item.className = 'tree-node file';
-      item.innerHTML = `
-        <div class="tree-node-content">
-          <i class="fas fa-file-alt"></i>
-          <span>${s.title}</span>
-        </div>`;
-      item.querySelector('.tree-node-content').addEventListener('click', ()=> openSummaryFromHistory(s));
-      box.appendChild(item);
-    });
-
-    wrap.appendChild(node);
-  });
-}
-
 // 요약 리스트 업데이트
 function updateSummariesList() {
   const summariesList = document.getElementById('summariesList');
@@ -1202,16 +714,9 @@ function updateSummariesList() {
   summariesList.innerHTML = '';
 
   sessionHistory.forEach(summary => {
-    // 이미 어떤 프로젝트 폴더에 들어간 요약은 아래 리스트에서 숨김
-    if (isAssigned(summary.id)) return;
     const summaryElement = document.createElement('div');
     summaryElement.className = 'summary-item';
     summaryElement.onclick = () => openSummaryFromHistory(summary);
-    // 폴더로 이동시키기 위해 드래그 가능
-    summaryElement.draggable = true;
-    summaryElement.addEventListener('dragstart', (e)=>{
-        e.dataTransfer.setData('text/summaryId', String(summary.id));
-    });
 
     summaryElement.innerHTML = `
       <h4 title="${summary.title}">${summary.title}</h4>
@@ -1396,52 +901,51 @@ function clearAllSummaries() {
 
 // 요약본 클립보드 복사
 async function copyResultText(tabId) {
-    const box = document.getElementById(`output-${tabId}`);
-    if (!box) return;
+  const box = document.getElementById(`output-${tabId}`);
+  if (!box) return;
 
-    // 컨텐츠 영역만 선택 (버튼/메타 제외)
-    const content = box.querySelector('.content-body');
-    const text = (content ? content.innerText : box.innerText);
+  // 보통은 '텍스트'만 복사하는 게 안전함 (마크업 제거)
+  const text = box.innerText;
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showNotification('success', '텍스트가 클립보드에 복사되었습니다.');
+    flashCopyBtn(tabId); // 선택: 버튼에 잠깐 "복사됨" 표시
+  } catch (e) {
+    // 폴백: 임시 textarea
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
     try {
-        await navigator.clipboard.writeText(text);
-        showNotification('success', '텍스트가 클립보드에 복사되었습니다.');
-        flashCopyBtn(tabId); // 선택: 버튼에 잠깐 "복사됨" 표시
-    } catch (e) {
-        // 폴백: 임시 textarea
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.style.position = 'fixed';
-        ta.style.top = '-9999px';
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-            document.execCommand('copy');
-            showNotification('success', '텍스트가 클립보드에 복사되었습니다.');
-            flashCopyBtn(tabId);
-        } catch {
-            showNotification('error', '복사에 실패했습니다.');
-        } finally {
-            document.body.removeChild(ta);
-        }
+      document.execCommand('copy');
+      showNotification('success', '텍스트가 클립보드에 복사되었습니다.');
+      flashCopyBtn(tabId);
+    } catch {
+      showNotification('error', '복사에 실패했습니다.');
+    } finally {
+      document.body.removeChild(ta);
     }
+  }
 }
 
 // 복사 성공 메세지 출력
 function flashCopyBtn(tabId) {
-    let btn = document.querySelector(`#${tabId}-content .copy-row .btn.copy-btn`);
-    if (!btn) btn = document.querySelector(`#${tabId}-content .result .result-row .btn.ghost`);
-    if (!btn) return;
-    const icon = btn.querySelector('i');
-    const span = btn.querySelector('span');
-    const old = span.textContent;
-    span.textContent = '복사됨';
-    icon.classList.remove('fa-copy');
-    icon.classList.add('fa-check');
-    setTimeout(() => {
-        span.textContent = old;
-        icon.classList.remove('fa-check');
-        icon.classList.add('fa-copy');
-    }, 1200);
+  const btn = document.querySelector(`#${tabId}-content .result .result-row .btn.ghost`);
+  if (!btn) return;
+  const icon = btn.querySelector('i');
+  const span = btn.querySelector('span');
+  const old = span.textContent;
+  span.textContent = '복사됨';
+  icon.classList.remove('fa-copy');
+  icon.classList.add('fa-check');
+  setTimeout(() => {
+    span.textContent = old;
+    icon.classList.remove('fa-check');
+    icon.classList.add('fa-copy');
+  }, 1200);
 }
 
 // 버튼 상태 관리
@@ -1603,220 +1107,4 @@ async function sendTranscriptionRequest(opts = {}) {
         throw new Error(`전송 실패 ${res.status}: ${text || '서버 오류'}`);
     }
     return res.json().catch(() => ({}));
-}
-
-// ==== 오픈소스 정보 표시 ====
-function showOpenSourceInfo() {
-    const tabId = 'opensource';
-    
-    // 이미 열려있으면 해당 탭으로 전환
-    if (openTabs.has(tabId)) {
-        switchToTab(tabId);
-        return;
-    }
-    
-    // 탭 정보 저장
-    openTabs.set(tabId, {
-        id: tabId,
-        title: '오픈소스 정보',
-        type: 'opensource',
-        icon: 'fas fa-code',
-        closable: true
-    });
-    
-    // 탭 콘텐츠 생성
-    createOpenSourceTabContent(tabId);
-    
-    // 탭으로 전환
-    switchToTab(tabId);
-    
-    // 탭 바 업데이트
-    updateTabBar();
-}
-
-function createOpenSourceTabContent(tabId) {
-    const tabContents = document.querySelector('.tab-contents');
-    const tabContent = document.createElement('div');
-    tabContent.className = 'tab-content';
-    tabContent.id = `${tabId}-content`;
-    
-    tabContent.innerHTML = `
-        <div class="opensource-content">
-            <h2>오픈소스 라이선스 정보</h2>
-            
-            <h3>프론트엔드</h3>
-            <table class="opensource-table">
-                <thead>
-                    <tr>
-                        <th>이름</th>
-                        <th>분류</th>
-                        <th>라이선스</th>
-                        <th>링크</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>Font Awesome</strong></td>
-                        <td>UI/UX 라이브러리</td>
-                        <td>Font Awesome Free (Icons: CC BY 4.0, Code: MIT)</td>
-                        <td><a href="https://fontawesome.com/" target="_blank">fontawesome.com</a></td>
-                    </tr>
-                    <tr>
-                        <td>MediaRecorder API</td>
-                        <td>오디오/비디오 녹화</td>
-                        <td>표준 웹 API (무료)</td>
-                        <td><a href="https://w3c.github.io/mediacapture-record/" target="_blank">W3C 스펙</a></td>
-                    </tr>
-                    <tr>
-                        <td>Fetch API</td>
-                        <td>네트워크</td>
-                        <td>표준 웹 API (무료)</td>
-                        <td><a href="https://fetch.spec.whatwg.org/" target="_blank">WHATWG 스펙</a></td>
-                    </tr>
-                    <tr>
-                        <td>localStorage</td>
-                        <td>저장소</td>
-                        <td>표준 웹 API (무료)</td>
-                        <td><a href="https://html.spec.whatwg.org/multipage/webstorage.html" target="_blank">WHATWG 스펙</a></td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <h3>백엔드</h3>
-            <table class="opensource-table">
-                <thead>
-                    <tr>
-                        <th>이름</th>
-                        <th>분류</th>
-                        <th>라이선스</th>
-                        <th>링크</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>FastAPI</strong></td>
-                        <td>라이브러리</td>
-                        <td>MIT</td>
-                        <td><a href="https://fastapi.tiangolo.com/" target="_blank">fastapi.tiangolo.com</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Uvicorn</strong></td>
-                        <td>라이브러리</td>
-                        <td>BSD 3-Clause</td>
-                        <td><a href="https://www.uvicorn.org/" target="_blank">uvicorn.org</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>SQLAlchemy</strong></td>
-                        <td>라이브러리</td>
-                        <td>MIT</td>
-                        <td><a href="https://www.sqlalchemy.org/" target="_blank">sqlalchemy.org</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>psycopg2-binary</strong></td>
-                        <td>라이브러리</td>
-                        <td>LGPL 3.0</td>
-                        <td><a href="https://pypi.org/project/psycopg2-binary/" target="_blank">PyPI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Pydantic</strong></td>
-                        <td>라이브러리</td>
-                        <td>MIT</td>
-                        <td><a href="https://docs.pydantic.dev/latest/" target="_blank">pydantic.dev</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>pydantic-settings</strong></td>
-                        <td>라이브러리</td>
-                        <td>MIT</td>
-                        <td><a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/" target="_blank">pydantic.dev</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>python-dotenv</strong></td>
-                        <td>라이브러리</td>
-                        <td>BSD 3-Clause</td>
-                        <td><a href="https://pypi.org/project/python-dotenv/" target="_blank">PyPI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>PostgreSQL</strong></td>
-                        <td>DB 서버 (소프트웨어)</td>
-                        <td>PostgreSQL License</td>
-                        <td><a href="https://www.postgresql.org/" target="_blank">postgresql.org</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>python-multipart</strong></td>
-                        <td>라이브러리</td>
-                        <td>Apache License 2.0</td>
-                        <td><a href="https://pypi.org/project/python-multipart/" target="_blank">PyPI</a></td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <h3>AI</h3>
-            <table class="opensource-table">
-                <thead>
-                    <tr>
-                        <th>이름</th>
-                        <th>분류</th>
-                        <th>라이선스</th>
-                        <th>링크</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>openai/whisper-large-v3</strong></td>
-                        <td>STT 모델</td>
-                        <td>Apache License 2.0</td>
-                        <td><a href="https://huggingface.co/openai/whisper-large-v3" target="_blank">Hugging Face</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>openai-whisper</strong></td>
-                        <td>파이썬 모듈 (라이브러리)</td>
-                        <td>MIT License</td>
-                        <td><a href="https://pypi.org/project/openai-whisper/" target="_blank">PyPI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Qwen3-4B-Thinking-2507-GGUF Q8_0</strong></td>
-                        <td>LLM 모델 (Refining)</td>
-                        <td>Apache License 2.0</td>
-                        <td><a href="https://huggingface.co/lmstudio-community/Qwen3-4B-Thinking-2507-GGUF" target="_blank">Hugging Face</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Qwen3-4B-Instruct-2507-GGUF Q4_K_M</strong></td>
-                        <td>LLM 모델 (Categorizing)</td>
-                        <td>Apache License 2.0</td>
-                        <td><a href="https://huggingface.co/lmstudio-community/Qwen3-4B-Instruct-2507-GGUF" target="_blank">Hugging Face</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>pyannote-audio</strong></td>
-                        <td>파이썬 모듈 (라이브러리)</td>
-                        <td>MIT License</td>
-                        <td><a href="https://pypi.org/project/pyannote-audio/" target="_blank">PyPI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>pyannote/speaker-diarization-3.1</strong></td>
-                        <td>Diarization 모델</td>
-                        <td>MIT License</td>
-                        <td><a href="https://huggingface.co/pyannote/speaker-diarization-3.1" target="_blank">Hugging Face</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>llama-cpp-python</strong></td>
-                        <td>GGUF 모델 구동용 파이썬 모듈</td>
-                        <td>MIT License</td>
-                        <td><a href="https://pypi.org/project/llama-cpp-python/" target="_blank">PyPI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>DeepSeek-R1-0528-Qwen3-8B-GGUF Q8_0</strong></td>
-                        <td>LLM 모델 (Refining)</td>
-                        <td>MIT License</td>
-                        <td><a href="https://huggingface.co/lmstudio-community/DeepSeek-R1-0528-Qwen3-8B-GGUF" target="_blank">Hugging Face</a></td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <div class="opensource-note">
-                <strong>참고:</strong> pyannote.audio 라이브러리와 라이브러리 내부적으로 사용되는 diarization 모델은 별개의 라이선스 대상입니다.
-            </div>
-        </div>
-    `;
-    
-    tabContents.appendChild(tabContent);
 }
