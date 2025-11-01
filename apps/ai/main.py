@@ -99,3 +99,6 @@ def ai_main(argv: list[str] | None = None) -> None:
 if __name__ == "__main__":
     import sys
     ai_main(sys.argv[1:])
+
+def run_ai_pipeline(file_path: str):
+    ai_main([file_path])
