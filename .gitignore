@@ -286,3 +286,9 @@ test/
 data/
 output/
 uploads/
+
+## ===== /apps/projects =====
+# 파이프라인 산출물 디렉토리, 디렉토리는 존재해야 하나 내용물은 무시
+apps/projects/*
+
+!apps/projects/.gitkeep

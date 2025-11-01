@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import time
 import importlib
+import inspect
 from typing import Iterable, Optional, Union
 
 from dotenv import load_dotenv
@@ -147,7 +148,6 @@ def ensure_llm_model(
                 local_dir_use_symlinks=True,
                 allow_patterns=ap,
                 token=token,
-                tqdm_enabled=True,
                 max_workers=max_workers,
             )
             print(f"[install/llm] ready (cache): {cache_dir}")
