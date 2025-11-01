@@ -119,7 +119,6 @@ def run_ai_processing(job_id: int):
         db.add(transcribe_log)
         db.commit()
         
-        all_individual_summaries = []
         for material in job.source_materials:
             material.status = models.MaterialStatus.TRANSCRIBING
             db.commit()
