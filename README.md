@@ -1,4 +1,4 @@
-<img src="https://github.com/user-attachments/assets/adfa14ec-a191-494a-8292-6e1ba4848295" alt="TeamLogo" width="160" height="160" />
+<img src="https://github.com/user-attachments/assets/adfa14ec-a191-494a-8292-6e1ba4848295" alt="TeamLogo" width="512" height="512" />
 
 #  Local Audio Intelligence
 > **로컬 환경에서 개인정보 유출 없이, 긴 오디오를 자동으로 화자 구분·전사·요약하는 AI 음성 처리 솔루션**
