@@ -95,5 +95,7 @@ def ai_main(argv: list[str] | None = None) -> None:
         print("Pipeline completed, but no summary was produced.")
 
 
+# 외부 import 시 자동 실행 방지
 if __name__ == "__main__":
-    ai_main()
+    import sys
+    ai_main(sys.argv[1:])
