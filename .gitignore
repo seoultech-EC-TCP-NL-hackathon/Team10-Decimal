@@ -285,6 +285,16 @@ logs/
 test/
 data/
 output/
+uploads/
+
+## ===== /apps/projects =====
+# 파이프라인 산출물 디렉토리, 디렉토리는 존재해야 하나 내용물은 무시
+apps/projects/*
+
+!apps/projects/.gitkeep
+
+## ===== config 파일 =====
+apps/ai/ai.config.json
 
 # uploads 폴더 안의 모든 내용을 무시
 uploads/*
