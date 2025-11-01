@@ -37,6 +37,7 @@ from .pipeline.stages import (
     CategorizeLLMStage,
     RefineLLMStage,
 )
+from .io import storage
 
 
 def ai_main(argv: list[str] | None = None) -> None:
@@ -100,5 +101,42 @@ if __name__ == "__main__":
     import sys
     ai_main(sys.argv[1:])
 
-def run_ai_pipeline(file_path: str):
-    ai_main([file_path])
+def run_ai_pipeline(file_path: str, job_id: str) -> None:
+    input_path = Path(file_path)
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input file not found: {input_path}")
+
+    project_root = Path(__file__).resolve().parents[2]
+    config_path = project_root / "apps" / "ai" / "ai.config.json"
+    ensure_models_ready(models_dir=None, config_json=config_path)
+
+    config = Config.load()
+    resources = Resources(config)
+    run_id = storage.normalise_run_identifier(job_id)
+    base_dir = storage.resolve_run_directory(config.runs_dir, job_id)
+
+    context = StageContext(
+        run_id=run_id,
+        config=config,
+        resources=resources,
+        base_dir=base_dir,
+        input_file=input_path,
+    )
+
+    stages = [
+        NormalizeStage(),
+        DiarizeStage(),
+        STTStage(),
+        MergeStage(),
+        CategorizeLLMStage(),
+        RefineLLMStage(),
+    ]
+    orchestrator = PipelineOrchestrator(stages)
+    orchestrator.run(context)
+
+    summary = context.data.get("summary")
+    if summary:
+        print("=== Final Summary ===")
+        print(summary)
+    else:
+        print("Pipeline completed, but no summary was produced.")

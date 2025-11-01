@@ -13,10 +13,26 @@ from __future__ import annotations
 
 import json
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List
 
 from ..types import AudioChunk
 from ..pipeline.base import StageContext
+
+
+def normalise_run_identifier(identifier: str) -> str:
+    """Return a filesystem-friendly identifier for a pipeline run/job."""
+    cleaned = identifier.strip()
+    safe = "".join(char if char.isalnum() or char in {"-", "_"} else "_" for char in cleaned)
+    safe = safe.strip("_")
+    if not safe:
+        raise ValueError("job_id must contain at least one alphanumeric character.")
+    return safe
+
+
+def resolve_run_directory(root: Path, identifier: str) -> Path:
+    """Resolve the directory where pipeline artifacts for a job/run are stored."""
+    return root / normalise_run_identifier(identifier)
 
 
 def _serialise_audio_chunks(chunks: List[AudioChunk]) -> List[Dict[str, Any]]:
