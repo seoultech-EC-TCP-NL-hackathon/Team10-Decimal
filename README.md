@@ -1,26 +1,16 @@
-# Decimal
+#  Local Audio Intelligence
+> **로컬 환경에서 개인정보 유출 없이, 긴 오디오를 자동으로 화자 구분·전사·요약하는 AI 음성 처리 솔루션**
 
-<div align="center" style="display:flex; align-items:center; justify-content:center; gap:16px;">
+##  프로젝트 개요
 
-  <img src="https://github.com/user-attachments/assets/adfa14ec-a191-494a-8292-6e1ba4848295" alt="TeamLogo" width="160" height="160" />
-
-  <div align="left">
-
-  <h1>Local Audio Intelligence</h1>
-  <p><b>로컬 환경에서 개인정보 유출 없이, 긴 오디오를 자동으로 화자 구분·전사·요약하는 AI 음성 처리 솔루션</b></p>
-
-  </div>
-
-</div>
-
-## 🚀 프로젝트 개요
 회의·인터뷰·강의 등 **음성 기반 정보**의 비중이 커지고 있지만, 여전히 이를 **정리·검색·공유 가능한 데이터**로 전환하는 과정은 수작업에 의존합니다.  
 본 프로젝트는 **인터넷 연결이나 계정 로그인 없이**, **100% 로컬 환경에서 안전하게** 음성 데이터를 처리할 수 있는 자동화 솔루션을 제공합니다.
-
 
 ##  핵심 문제 정의
 
 > “로컬 환경에서 개인정보 유출 없이, 긴 오디오를 자동으로 **화자 구분 + 전사 + 요약**할 수 있는 효율적인 솔루션이 없다.”
+
+---
 
 ##  목표
 
@@ -84,7 +74,7 @@ Whisper · pyannote.audio · Qwen3
 
 ##  설치 및 실행 방법
 
-###  환경 설정
+### 환경 설정
 ```bash
 git clone https://github.com/your-repo/local-audio-intelligence.git
 cd local-audio-intelligence
