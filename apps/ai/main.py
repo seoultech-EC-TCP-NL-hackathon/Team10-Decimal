@@ -132,7 +132,7 @@ def run_ai_pipeline(file_path: str, job_id: str) -> None:
         RefineLLMStage(),
     ]
     orchestrator = PipelineOrchestrator(stages)
-    orchestrator.run(context)
+    results = orchestrator.run(context)
 
     summary = context.data.get("summary")
     if summary:
