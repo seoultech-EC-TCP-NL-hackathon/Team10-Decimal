@@ -1,9 +1,9 @@
 # main.py (is_korean_only 로직 수정)
-import json
 import sys
 import os
 import shutil
 import time
+import json
 from datetime import datetime, timezone
 from fastapi import (
     FastAPI, Depends, HTTPException, UploadFile, File, Form, 
@@ -37,7 +37,7 @@ if str(AI_MODULE_PATH) not in sys.path:
     sys.path.append(str(AI_MODULE_PATH))
 
 try:
-    # apps/ai/main.py에서 run_ai_pipeline 직접 import
+    # apps/ai/main.py에서 run_ai_pipeline 상대 import
     from ..ai.main import run_ai_pipeline
     print(f"INFO: run_ai_pipeline successfully imported from: {AI_MODULE_PATH}")
 except ImportError as e:
@@ -86,12 +86,11 @@ def call_ai_model(file_path: Path, is_korean_only: bool, run_id: str) -> dict:
 
         individual_summary_content = summary_file_path.read_text(encoding="utf-8")
 
-       
         # speaker-attributed.txt 파일에서 segments 파싱 (JSON assumed)
         try:
             segments = json.loads(transcript_file_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            # JSON 파싱 실패 시, fallback으로 일반 텍스트 줄 단위로 변환
+            # JSON이 아니면, 라인 단위 텍스트로 변환
             print(f"WARN: [AI] speaker-attributed.txt JSON 파싱 실패. 라인 기반 파싱 시도.")
             lines = transcript_file_path.read_text(encoding="utf-8").splitlines()
             segments = [
@@ -101,7 +100,6 @@ def call_ai_model(file_path: Path, is_korean_only: bool, run_id: str) -> dict:
         except Exception as e:
             print(f"ERROR: [AI] speaker-attributed.txt 파싱 실패: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to parse speaker-attributed.txt: {e}")
-
 
         print(f"INFO: [AI] 산출물 읽기 완료 (run_id={run_id}).")
         return {
@@ -189,6 +187,7 @@ def run_ai_processing(job_id: int):
 
             ai_results = call_ai_model(
                 full_file_path,
+                material.source_type,
                 is_korean_only=is_korean_flag,
                 run_id=per_material_run_id,
             )
@@ -368,7 +367,7 @@ def delete_subject(subject_id: int, db: Session = Depends(get_db)):
         # 파일 삭제에 실패해도 DB 삭제는 계속 진행
         
     db.delete(subject)
-    db.commit()    
+    db.commit()
     return Response(status_code=204)
 
 # ---  Summary Job API (녹음 파일 저장)  ---
@@ -377,6 +376,7 @@ async def create_summary_job_with_files(
     background_tasks: BackgroundTasks,
     title: str = Form(...),
     subject_id: Optional[int] = Form(None),
+    # is_korean_only 파라미터는 여기서 제거 (Subject의 플래그를 사용)
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
@@ -398,7 +398,7 @@ async def create_summary_job_with_files(
                 detail=f"File format not allowed for '{file.filename}'. Allowed formats: {allowed_ext_str}",
             )
 
-        # 메타데이터에서 파일 크기 확인 (가능한 경우)
+        # 메타데이터에서 파일 크기 가져오기 (가능하면)
         size = None
         try:
             file.file.seek(0, os.SEEK_END)
@@ -407,10 +407,10 @@ async def create_summary_job_with_files(
         except Exception:
             pass
 
-        # 파일 크기를 알 수 없으면 스트리밍으로 크기 계산
+        # 메타데이터로 크기를 못 구하면, chunk 단위로 직접 계산
         if not size or size == 0:
             size = 0
-            chunk_size = 1024 * 1024  # 1MB 단위로 읽기
+            chunk_size = 1024 * 1024  # 1MB
             while True:
                 chunk = await file.read(chunk_size)
                 if not chunk:
@@ -420,13 +420,12 @@ async def create_summary_job_with_files(
                     raise HTTPException(status_code=413, detail=f"File '{file.filename}' exceeds 10GB limit.")
             await file.seek(0)
 
-        # 최종 크기 초과 확인
+        #  최종 크기 초과 검사
         if size > MAX_FILE_SIZE_BYTES:
             raise HTTPException(status_code=413, detail=f"File '{file.filename}' exceeds 10GB limit.")
 
         file_sizes[file.filename] = size
 
-    # --- Subject 유효성 확인 ---
     if subject_id is not None:
         subject = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
         if not subject:
@@ -543,8 +542,4 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
             
     db.delete(job)
     db.commit()
-
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
-
-
-
