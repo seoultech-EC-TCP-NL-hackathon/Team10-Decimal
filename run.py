@@ -187,7 +187,8 @@ def create_env_if_missing(env_path: Path, default_port: int) -> None:
         "PGUSER=app_user",
         "PGPASSWORD=app_password",
         "PGDATABASE=app_db",
-        "DB_URL=postgresql+psycopg2://app_user:app_password@127.0.0.1:5432/app_db",
+        "DB_URL=postgresql://app_user:app_password@127.0.0.1:5432/app_db",
+        "POSTGRES_PASSWORD=admin1234",
         "HUGGINGFACE_TOKEN=",
         f"API_KEY={api_key}",
     ]
@@ -238,6 +239,62 @@ def probe_postgres(host: str, port: int, timeout: float = 2.0) -> bool:
     except Exception:
         return False
 
+# --------- psql 권한 설정 -----------
+def grant_db_permissions(
+    psql_path: str,
+    admin_user: str,
+    admin_pass: str,
+    app_user: str,
+    app_db: str,
+    host: str,
+    port: int
+) -> bool:
+    """psql을 실행하여 앱 사용자에게 DB 권한을 부여합니다."""
+    info(f"'{app_user}' 사용자에게 '{app_db}' DB 권한을 부여합니다...")
+    
+    commands = [
+        f"GRANT ALL PRIVILEGES ON DATABASE {app_db} TO {app_user};",
+        f"GRANT USAGE ON SCHEMA public TO {app_user};",
+        f"GRANT CREATE ON SCHEMA public TO {app_user};"
+    ]
+    
+    psql_cmd = [
+        psql_path,
+        "-U", admin_user,
+        "-h", host,
+        "-p", str(port),
+        "-d", app_db,
+        "-c", " ".join(commands)
+    ]
+    
+    env = os.environ.copy()
+    env["PGPASSWORD"] = admin_pass
+    
+    try:
+        process = subprocess.Popen(psql_cmd, env=env, text=True,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, _ = process.communicate()
+
+        if process.returncode == 0:
+            ok(f"'{app_user}' 사용자에게 권한이 성공적으로 부여되었습니다.")
+            return True
+        else:
+            # 이미 권한이 부여된 경우도 에러로 처리될 수 있으나, 일단 경고로 표시
+            warn(f"권한 부여 중 메시지 발생 (psql):")
+            print(stdout or "")
+            # 치명적 오류가 아닐 수 있으므로 True 반환 (예: 'already exists')
+            if "already exists" in (stdout or "") or "granted" in (stdout or ""):
+                return True
+            return False
+            
+    except FileNotFoundError:
+        err(f"psql.exe를 찾을 수 없습니다. (경로: {psql_path})")
+        warn("PostgreSQL bin 폴더를 시스템 PATH에 추가하거나, PSQL_PATH 변수를 수정하세요.")
+        return False
+    except Exception as e:
+        err(f"권한 부여 중 예외 발생: {e}")
+        return False
+
 # ---------- log rotation ----------
 def rotate_logs(log_dir: Path, keep: int) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -276,7 +333,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="FastAPI Runner")
     parser.add_argument("--prod", action="store_true", help="Run in PROD mode (background with logs)")
     parser.add_argument("--app-name", default="my-app")
-    parser.add_argument("--app-module", default="main:app")
+    parser.add_argument("--app-module", default="apps.api.main:app")
     parser.add_argument("--default-port", type=int, default=8000)
     parser.add_argument("--requirements-file", default="requirements.txt")
     parser.add_argument("--log-dir", default="logs")
@@ -317,6 +374,38 @@ def main(argv: Optional[List[str]] = None) -> int:
     env = load_env(ENV_FILE)
     ensure_env_key(ENV_FILE, "HUGGINGFACE_TOKEN", "")   # ← 없으면 빈 키 생성
     # (참고) 값을 덮어쓰지 않으므로, WebUI에서 값을 채워 넣으면 그대로 유지됨.
+
+    PSQL_PATH = "psql" # PATH에 설정되어 있다고 가정
+    
+    ADMIN_PASS = env.get("POSTGRES_PASSWORD")
+    APP_DB = env.get("PGDATABASE", "mydatabase")
+    APP_USER = env.get("PGUSER", "myuser")
+    PGHOST = env.get("PGHOST", "127.0.0.1")
+    PGPORT = int(env.get("PGPORT", "5432"))
+
+# --------- 권한 설정 로직 ----------
+    if ADMIN_PASS:
+        info("PostgreSQL 권한 설정을 시도합니다...")
+        perm_check_file = TMP_DIR / f"{APP_DB}_{APP_USER}_perms.ok"
+        
+        if not perm_check_file.exists():
+            success = grant_db_permissions(
+                psql_path=PSQL_PATH,
+                admin_user="postgres",
+                admin_pass=ADMIN_PASS,
+                app_user=APP_USER,
+                app_db=APP_DB,
+                host=PGHOST,
+                port=PGPORT
+            )
+            if success:
+                perm_check_file.write_text("OK", encoding="utf-8")
+            else:
+                warn("권한 설정에 실패했습니다. DB 연결 시 오류가 발생할 수 있습니다.")
+        else:
+            info("권한이 이미 설정된 것으로 보입니다. (설정 스킵)")
+    else:
+        warn("POSTGRES_PASSWORD가 .env 파일에 없어 권한 설정을 건너뜁니다.")
 
     # Defaults
     PORT = int(env.get("PORT", str(DEFAULT_PORT)) or DEFAULT_PORT)
