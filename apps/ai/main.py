@@ -101,7 +101,7 @@ if __name__ == "__main__":
     import sys
     ai_main(sys.argv[1:])
 
-def run_ai_pipeline(file_path: str, job_id: str) -> None:
+def run_ai_pipeline(file_path: str, job_id: str, is_korean_only: bool = False) -> None:
     input_path = Path(file_path)
     if not input_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
