@@ -367,8 +367,9 @@ class RefineLLMStage(BaseStage):
 
             if getattr(torch, "cuda", None) and torch.cuda.is_available():
                 return -1
-        except Exception:
-            pass
+        except Exception as e:
+            # Ignore all exceptions here; fallback to CPU if GPU detection fails.
+            print(f"[RefineStage] Exception while checking for CUDA GPU: {e}")
 
         # Attempt full offload; loader will fall back to CPU if GPU loading fails.
         return -1
