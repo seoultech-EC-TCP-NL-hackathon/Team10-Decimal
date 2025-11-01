@@ -48,7 +48,7 @@ except ImportError as e:
 
 app = FastAPI()
 
-app.mount("/web", StaticFiles(directory="apps/web/dist", html=True), name="static")
+app.mount("/web", StaticFiles(directory="apps/web", html=True), name="static")
 
 # --- 의존성 (Dependencies) ---
 def get_db():
@@ -543,3 +543,4 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
     db.delete(job)
     db.commit()
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
+
