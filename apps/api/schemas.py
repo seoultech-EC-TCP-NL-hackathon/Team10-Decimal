@@ -1,5 +1,5 @@
 # schemas.py
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Any
 from datetime import datetime
 from decimal import Decimal
