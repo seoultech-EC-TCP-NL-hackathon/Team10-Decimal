@@ -420,6 +420,10 @@ body {
     padding: 0 8px;
 }
 
+.summaries-header{
+    padding: 0 8px;
+}
+
 .summary-item {
     padding: 8px;
     margin: 4px 0;
@@ -861,6 +865,68 @@ body {
 .upload-hint {
     font-size: 12px;
     color: #8c8c8c;
+}
+
+/* 업로드 파일 미리보기 */
+.upload-preview {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+}
+
+.upload-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #2d2d30;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.upload-item .file-icon {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: #374151;
+    color: #dcb67a;
+}
+
+.upload-item .file-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.upload-item .file-name {
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.upload-item .file-size,
+.upload-item .file-duration {
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.upload-item .remove-btn {
+    margin-left: auto;
+    border: 1px solid #3c3c3c;
+    background: none;
+    color: #bfbfbf;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.upload-item .remove-btn:hover {
+    background: #3c3c3c;
+    color: #fff;
 }
 
 /* 모달 액션 */

@@ -169,12 +169,16 @@
                     <!-- 파일 업로드 -->
                     <div class="upload-controls" id="uploadControls" style="display: none;">
                         <div class="upload-area">
-                            <input type="file" id="audioFile" accept="audio/*" style="display: none;" onchange="handleFileUpload(event)">
+                            <!-- 파일 다중 업로드 -->
+                            <input type="file" id="audioFile" accept="audio/*" multiple style="display: none;" onchange="handleFileUpload(event)">
                             <div class="upload-drop-zone" onclick="document.getElementById('audioFile').click()">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <p>클릭하여 파일 선택</p>
                                 <p class="upload-hint">또는 파일을 여기로 드래그하세요</p>
                             </div>
+
+                            <!-- 업로드 파일 확인 -->
+                            <div class="upload-preview" id="uploadPreview"></div>
                         </div>
                     </div>
 
@@ -219,6 +223,7 @@
             </div>
         </div>
     </div>
+
     <script src="api.js"></script>
     <script src="script.js"></script>
 </body>

@@ -6,6 +6,7 @@ let recordingTimer = null;
 let startTime = 0;
 let totalRecordingTime = 0; // 누적 녹음 시간
 let currentAudioFile = null;
+let selectedFiles = [];
 let sessionHistory = [];
 let projects = {};
 let openTabs = new Map(); // 열려있는 탭들
@@ -205,6 +206,10 @@ function showRecordingModal(type) {
         title.textContent = '파일 업로드';
         recordingControls.style.display = 'none';
         uploadControls.style.display = 'block';
+
+        selectedFiles = [];
+        const prev = document.getElementById('uploadPreview');
+        if(prev) prev.innerHTML = '';
     }
     
     modal.classList.add('show');
@@ -492,98 +497,186 @@ function updateMinibarUI() {
 
 // 파일 업로드 처리
 function handleFileUpload(event) {
-    const file = event.target.files[0];
-    
-    if (!file) return;
-    
-    if (!file.type.startsWith('audio/')) {
-        showNotification('error', '오디오 파일만 업로드할 수 있습니다.');
-        return;
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    const valid = [];
+    for (const f of files) {
+        if (!f.type.startsWith('audio/')) {
+            showNotification('error', `오디오만 업로드 가능합니다: ${f.name}`);
+            continue;
+        }
+        if (f.size > 100 * 1024 * 1024) {
+            showNotification('error', `100MB 초과: ${f.name}`);
+            continue;
+        }
+        valid.push(f);
     }
-    
-    if (file.size > 100 * 1024 * 1024) {
-        showNotification('error', '파일 크기는 100MB 이하여야 합니다.');
-        return;
+
+    // 새로 선택한 파일들을 누적 (중복 파일명은 뒤에 (2) 같은 꼬리표 붙이기)
+    for (const f of valid) {
+        selectedFiles.push(ensureUniqueFileName(f));
     }
-    
-    currentAudioFile = file;
-    enableSummarizeButton();
-    
-    showNotification('success', `파일 "${file.name}"이 업로드되었습니다.`);
+
+    // 단일 파일 로직 호환: 첫 파일을 currentAudioFile로 잡아둠
+    currentAudioFile = selectedFiles[0] || null;
+
+    renderUploadPreview();
+    updateSummarizeButtonBySelection();
+    showNotification('success', `${valid.length}개 파일이 추가되었습니다.`);
 }
 
-// 요약 생성
+function updateSummarizeButtonBySelection() {
+    if (selectedFiles.length > 0 || currentAudioFile) enableSummarizeButton();
+    else disableSummarizeButton();
+}
+
+function ensureUniqueFileName(file) {
+    const base = file.name;
+    let name = base;
+    let count = 2;
+    const exists = () => selectedFiles.some(sf => sf.name === name);
+    while (exists()) {
+        const dot = base.lastIndexOf('.');
+        if (dot > -1) {
+            name = `${base.slice(0, dot)} (${count})${base.slice(dot)}`;
+        } else {
+            name = `${base} (${count})`;
+        }
+        count++;
+    }
+    // File 이름만 바꾸고 내용은 그대로 유지
+    return new File([file], name, { type: file.type });
+}
+
+function formatBytes(bytes) {
+    if (!bytes && bytes !== 0) return '';
+    const units = ['B','KB','MB','GB'];
+    let v = bytes, i = 0;
+    while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function renderUploadPreview() {
+    const wrap = document.getElementById('uploadPreview');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+
+    selectedFiles.forEach((file, idx) => {
+        const item = document.createElement('div');
+        item.className = 'upload-item';
+
+        // duration 구하려면 오디오 메타를 읽는다 (비동기)
+        const url = URL.createObjectURL(file);
+
+        item.innerHTML = `
+        <div class="file-icon"><i class="fas fa-file-audio"></i></div>
+        <div class="file-meta">
+            <div class="file-name" title="${file.name}">${file.name}</div>
+            <div class="file-size">${formatBytes(file.size)} <span class="file-duration" id="dur-${idx}"></span></div>
+        </div>
+        <button class="remove-btn" onclick="removeSelectedFile(${idx})">
+            제거
+        </button>
+        `;
+        wrap.appendChild(item);
+
+        // 길이 읽기 (선택 기능)
+        const audio = new Audio();
+        audio.preload = 'metadata';
+        audio.src = url;
+        audio.onloadedmetadata = () => {
+        const sec = Math.floor(audio.duration || 0);
+        const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+        const ss = String(sec % 60).padStart(2, '0');
+        const slot = document.getElementById(`dur-${idx}`);
+        if (slot) slot.textContent = ` • ${mm}:${ss}`;
+        URL.revokeObjectURL(url);
+        };
+    });
+}
+
+function removeSelectedFile(index) {
+    if (index < 0 || index >= selectedFiles.length) return;
+    selectedFiles.splice(index, 1);
+    // 단일 호환 변수 갱신
+    currentAudioFile = selectedFiles[0] || null;
+    renderUploadPreview();
+    updateSummarizeButtonBySelection();
+}
+
 async function summarizeAudio() {
-  if (!currentAudioFile) {
-    showNotification('error', '먼저 오디오를 녹음하거나 파일을 업로드해주세요.');
-    return;
-  }
+    // 업로드 모드: selectedFiles가 있으면 그걸로, 아니면 녹음(Blob) 1개
+    const hasUploads = selectedFiles.length > 0;
+    const files = hasUploads ? selectedFiles : (currentAudioFile ? [currentAudioFile] : []);
 
-  // 요약 제목 입력받기 (기본값: 현재 날짜)
-  const today = new Date();
-  const defaultTitle = `강의_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  
-  const summaryTitle = prompt('요약 제목을 입력하세요:', defaultTitle);
-  
-  // 취소 버튼을 누르면 null이 반환됨
-  if (summaryTitle === null) {
-    return;
-  }
-  
-  // 빈 문자열이면 기본값 사용
-  const finalTitle = summaryTitle.trim() || defaultTitle;
+    if (files.length === 0) {
+        showNotification('error', '먼저 오디오를 녹음하거나 파일을 업로드해주세요.');
+        return;
+    }
 
-  //버튼 누르자마자 모달 닫기(상태는 유지)
-  closeRecordingModal(true);
+    // 제목 입력
+    const today = new Date();
+    const defaultTitle = `강의_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const inputTitle = prompt('요약 제목을 입력하세요:', defaultTitle);
+    if (inputTitle === null) return; // 취소
+    const baseTitle = (inputTitle.trim() || defaultTitle);
 
-  showLoading(true);
-  try {
-    await simulateSummarization(finalTitle);
-    // (이미 모달은 닫힌 상태이므로 여긴 다시 닫을 필요 없음)
-  } catch (error) {
-    console.error('요약 실패:', error);
-    showNotification('error', '요약 중 오류가 발생했습니다. 다시 시도해주세요.');
-  } finally {
-    showLoading(false);
-  }
+    // 모달은 닫되 상태 유지
+    closeRecordingModal(true);
+
+    showLoading(true);
+    try {
+        // ✅ 여러 개면 각각 요약 생성
+        for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const isMulti = files.length > 1;
+        const title = isMulti ? `${baseTitle} - ${f.name}` : baseTitle;
+        await simulateSummarizationForFile(title, f);
+        }
+        showNotification('success', `${files.length}개 요약이 생성되었습니다.`);
+    } catch (err) {
+        console.error(err);
+        showNotification('error', '요약 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+        showLoading(false);
+        // 완료 후 업로드 선택 목록 초기화(선택)
+        selectedFiles = [];
+        const prev = document.getElementById('uploadPreview');
+        if (prev) prev.innerHTML = '';
+        updateSummarizeButtonBySelection();
+    }
 }
-
 
 // 요약 시뮬레이션
-async function simulateSummarization(summaryTitle) {
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
+async function simulateSummarizationForFile(summaryTitle, fileObjInput) {
+    await new Promise(resolve => setTimeout(resolve, 1200)); // 파일당 1.2초 딜레이(시뮬)
+
     const timestamp = new Date();
-    const fileObj = normalizeAudioFile(currentAudioFile);
+    const fileObj = normalizeAudioFile(fileObjInput);
     const fileName = fileObj instanceof File ? fileObj.name : `recording_${timestamp.getTime()}.webm`;
-    // 재생용 오브젝트 URL 생성
+
+    // 재생용 URL
     const audioUrl = URL.createObjectURL(fileObj);
+
     const summary = {
-        id: Date.now(),
-        title: summaryTitle || `${fileName} 요약`, // 사용자가 입력한 제목 사용
-        fileName: fileName,
+        id: Date.now() + Math.floor(Math.random() * 1000), // 겹침 방지
+        title: summaryTitle || `${fileName} 요약`,
+        fileName,
         content: generateMockSummary(),
         timestamp: timestamp.toLocaleString('ko-KR'),
-        type: currentAudioFile instanceof File ? 'file' : 'recording',
-        // 👇 전체 텍스트 섹션에서 사용할 재생 정보
+        type: fileObjInput instanceof File ? 'file' : 'recording',
         audioUrl,
         mimeType: fileObj.type || 'audio/webm',
         fileSize: fileObj.size || 0
     };
-    
-    // 탭으로 요약 결과 표시
+
     createSummaryTab(summary);
-    
-    // 파일 시스템에 추가
     addToFileSystem(summary);
-    
-    // 히스토리에 추가
     addToHistory(summary);
-    
-    // UI 업데이트
     if (document.getElementById('recordingsFolder') || document.getElementById('summariesFolder')) {
         updateFileTree();
-    }   
+    }
     updateSummariesList();
     updateRecentItems();
 }
