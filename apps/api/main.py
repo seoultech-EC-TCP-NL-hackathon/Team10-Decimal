@@ -1,4 +1,5 @@
 # main.py (is_korean_only 로직 수정)
+import json
 import sys
 import os
 import shutil
@@ -188,7 +189,6 @@ def run_ai_processing(job_id: int):
 
             ai_results = call_ai_model(
                 full_file_path,
-                material.source_type,
                 is_korean_only=is_korean_flag,
                 run_id=per_material_run_id,
             )
@@ -545,5 +545,6 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
+
 
 
