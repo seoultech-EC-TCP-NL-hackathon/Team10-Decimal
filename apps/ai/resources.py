@@ -133,6 +133,7 @@ class Resources:
 
                     self._whisper_model.to("cpu")
                 except Exception:
+                    # If moving the model to CPU fails, ignore the error and proceed to release the model.
                     pass
         except Exception:
             pass
