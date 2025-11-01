@@ -276,7 +276,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="FastAPI Runner")
     parser.add_argument("--prod", action="store_true", help="Run in PROD mode (background with logs)")
     parser.add_argument("--app-name", default="my-app")
-    parser.add_argument("--app-module", default="main:app")
+    parser.add_argument("--app-module", default="apps.api.main:app")
     parser.add_argument("--default-port", type=int, default=8000)
     parser.add_argument("--requirements-file", default="requirements.txt")
     parser.add_argument("--log-dir", default="logs")
