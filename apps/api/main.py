@@ -214,9 +214,6 @@ def run_ai_processing(job_id: int):
         summarize_log.status = models.JobStatus.COMPLETED
         summarize_log.end_time = datetime.now(timezone.utc)
 
-        # 최종 작업 상태 판별
-        db.refresh(job)
-
         job = (
             db.query(models.SummaryJob)
             .options(joinedload(models.SummaryJob.source_materials))
@@ -548,4 +545,5 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
+
 
