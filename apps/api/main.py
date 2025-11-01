@@ -7,7 +7,7 @@ from fastapi import (
     FastAPI, Depends, HTTPException, UploadFile, File, Form, 
     BackgroundTasks, Response
 )
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse
 from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
