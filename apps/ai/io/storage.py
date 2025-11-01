@@ -16,7 +16,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List
 
-from ..types import AudioChunk, SpeakerTurn, TranscriptSegment, CategoryResult, SummaryResult
+from ..types import AudioChunk
 from ..pipeline.base import StageContext
 
 
