@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import importlib
 import gc
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .config import Config
 
