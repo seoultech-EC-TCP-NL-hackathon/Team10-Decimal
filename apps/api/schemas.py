@@ -80,7 +80,6 @@ class Subject(SubjectBase):
 class SummaryJob(SummaryJobBase):
     id: int
     status: JobStatus
-    final_summary: Optional[str] = None 
     error_message: Optional[str] = None
     created_at: datetime
     started_at: Optional[datetime] = None

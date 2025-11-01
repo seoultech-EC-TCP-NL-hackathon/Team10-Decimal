@@ -23,10 +23,10 @@ class STTStage(BaseStage):
         chunks = context.data.get("chunks") or []
         transcripts: List[Dict[str, float | str]] = []
         model = context.resources.whisper_model
-        print(f"[STTStage] Starting transcription for {len(chunks)} chunk(s).")
+        print(f"    [STTStage] Starting transcription for {len(chunks)} chunk(s).")
         if model is None:
             # Placeholder transcripts
-            print("[STTStage] Whisper model unavailable; returning placeholder transcripts.")
+            print("    [STTStage] Whisper model unavailable; returning placeholder transcripts.")
             for chunk in chunks:
                 transcripts.append({
                     "start": chunk.start,
@@ -40,21 +40,21 @@ class STTStage(BaseStage):
             device = next(model.parameters()).device  # type: ignore[attr-defined]
         except (StopIteration, AttributeError):
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(f"[STTStage] Whisper model running on device: {device}.")
+        print(f"    [STTStage] Whisper model running on device: {device}.")
         # Use whisper to transcribe each chunk
         try:
             for chunk in chunks:
                 fp16 = device.type == "cuda"
-                print(f"[STTStage] Transcribing chunk {chunk.id} on {device} (fp16={fp16}).")
+                print(f"    [STTStage] Transcribing chunk {chunk.id} on {device} (fp16={fp16}).")
                 try:
                     result = model.transcribe(str(chunk.file_path), language=None, fp16=fp16)
                 except RuntimeError as exc:
                     if device.type == "cuda":
-                        print(f"[STTStage] CUDA transcription failed for chunk {chunk.id}: {exc}. Falling back to CPU.")
+                        print(f"    [STTStage] CUDA transcription failed for chunk {chunk.id}: {exc}. Falling back to CPU.")
                         model.to("cpu")  # type: ignore[attr-defined]
                         device = torch.device("cpu")
                         result = model.transcribe(str(chunk.file_path), language=None, fp16=False)
-                        print(f"[STTStage] Successfully transcribed chunk {chunk.id} on CPU fallback.")
+                        print(f"    [STTStage] Successfully transcribed chunk {chunk.id} on CPU fallback.")
                     else:
                         raise
                 segs = result.get("segments") or []
@@ -72,8 +72,8 @@ class STTStage(BaseStage):
                     if has_bounds:
                         if end < chunk_start - tolerance or start > chunk_end + tolerance:
                             print(
-                                f"[STTStage] Skipping segment outside chunk '{chunk.id}' bounds: "
-                                f"start={start:.2f}, end={end:.2f}, chunk_end={chunk_end:.2f}."
+                                f"    [STTStage] Skipping segment outside chunk '{chunk.id}' bounds: "
+                                f"    start={start:.2f}, end={end:.2f}, chunk_end={chunk_end:.2f}."
                             )
                             continue
                         start = max(start, chunk_start)
@@ -89,11 +89,11 @@ class STTStage(BaseStage):
                         "language": lang,
                     })
             context.data["stt"] = transcripts
-            print(f"[STTStage] Completed transcription with {len(transcripts)} segment(s).")
+            print(f"    [STTStage] Completed transcription with {len(transcripts)} segment(s).")
             return StageResult(name=self.name, success=True, data=transcripts)
         except Exception as e:
             # On failure produce empty transcripts
-            print(f"[STTStage] Transcription failed: {e}")
+            print(f"    [STTStage] Transcription failed: {e}")
             fallback = []
             for chunk in chunks:
                 fallback.append({

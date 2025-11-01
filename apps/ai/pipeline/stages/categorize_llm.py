@@ -82,7 +82,7 @@ class CategorizeLLMStage(BaseStage):
         try:
             from llama_cpp import Llama  # type: ignore
         except ImportError:
-            print("[CategorizeStage] llama_cpp is not installed.")
+            print("    [CategorizeStage] llama_cpp is not installed.")
             return None
 
         gpu_layers = self._determine_gpu_layers(context)
@@ -96,17 +96,17 @@ class CategorizeLLMStage(BaseStage):
         try:
             llama = Llama(n_gpu_layers=gpu_layers, **init_kwargs)
             offload_note = "GPU" if gpu_layers != 0 else "CPU"
-            print(f"[CategorizeStage] Loaded llama.cpp model '{model_path.name}' on {offload_note}.")
+            print(f"    [CategorizeStage] Loaded llama.cpp model '{model_path.name}' on {offload_note}.")
             return llama
         except Exception as gpu_exc:
             if gpu_layers != 0:
-                print(f"[CategorizeStage] GPU initialisation failed ({gpu_exc}); retrying on CPU.")
+                print(f"    [CategorizeStage] GPU initialisation failed ({gpu_exc}); retrying on CPU.")
             try:
                 llama = Llama(n_gpu_layers=0, **init_kwargs)
-                print(f"[CategorizeStage] Loaded llama.cpp model '{model_path.name}' on CPU.")
+                print(f"    [CategorizeStage] Loaded llama.cpp model '{model_path.name}' on CPU.")
                 return llama
             except Exception as cpu_exc:
-                print(f"[CategorizeStage] Failed to load llama.cpp model on CPU: {cpu_exc}")
+                print(f"    [CategorizeStage] Failed to load llama.cpp model on CPU: {cpu_exc}")
                 return None
 
     def _classify_with_llm(self, context: StageContext, llama: Any, summary_text: str) -> str:
@@ -127,7 +127,7 @@ class CategorizeLLMStage(BaseStage):
             )
             content = (response["choices"][0]["message"]["content"] or "").strip()
         except Exception as exc:
-            print(f"[CategorizeStage] LLM classification failed: {exc}")
+            print(f"    [CategorizeStage] LLM classification failed: {exc}")
             return ""
 
         cleaned = self._strip_think_tags(content)
@@ -142,9 +142,9 @@ class CategorizeLLMStage(BaseStage):
             if prompt:
                 return prompt
         except FileNotFoundError:
-            print(f"[CategorizeStage] Prompt file not found: {prompt_path}")
+            print(f"    [CategorizeStage] Prompt file not found: {prompt_path}")
         except Exception as exc:
-            print(f"[CategorizeStage] Failed to read prompt file '{prompt_path}': {exc}")
+            print(f"    [CategorizeStage] Failed to read prompt file '{prompt_path}': {exc}")
         return _DEFAULT_PROMPT
 
     def _resolve_model_path(
@@ -158,7 +158,7 @@ class CategorizeLLMStage(BaseStage):
         selected = context.config.selected_models
         repo_id = selected.get(repo_key)
         if not repo_id:
-            print("[CategorizeStage] No categorisation model configured.")
+            print("    [CategorizeStage] No categorisation model configured.")
             return None
 
         allow_patterns = self._as_patterns(selected.get(pattern_key))
@@ -166,7 +166,7 @@ class CategorizeLLMStage(BaseStage):
         try:
             from huggingface_hub import snapshot_download
         except ImportError:
-            print("[CategorizeStage] huggingface_hub is not installed; cannot resolve model.")
+            print("    [CategorizeStage] huggingface_hub is not installed; cannot resolve model.")
             return None
 
         cache_dir: Optional[Path] = None
@@ -179,7 +179,7 @@ class CategorizeLLMStage(BaseStage):
                 )
             )
         except Exception as exc:
-            print(f"[CategorizeStage] Local cache lookup failed ({exc}); attempting download.")
+            print(f"    [CategorizeStage] Local cache lookup failed ({exc}); attempting download.")
             try:
                 cache_dir = Path(
                     snapshot_download(
@@ -188,7 +188,7 @@ class CategorizeLLMStage(BaseStage):
                     )
                 )
             except Exception as download_exc:
-                print(f"[CategorizeStage] Unable to download categorisation model: {download_exc}")
+                print(f"    [CategorizeStage] Unable to download categorisation model: {download_exc}")
                 return None
 
         if cache_dir is None:
@@ -196,7 +196,7 @@ class CategorizeLLMStage(BaseStage):
 
         model_path = self._select_model_file(cache_dir, allow_patterns)
         if model_path is None:
-            print(f"[CategorizeStage] No GGUF model file found under '{cache_dir}'.")
+            print(f"    [CategorizeStage] No GGUF model file found under '{cache_dir}'.")
         return model_path
 
     def _select_model_file(self, cache_dir: Path, allow_patterns: Optional[Sequence[str]]) -> Optional[Path]:
@@ -279,7 +279,7 @@ class CategorizeLLMStage(BaseStage):
                 if contents:
                     return self._strip_think_tags(contents)
             except Exception as exc:
-                print(f"[CategorizeStage] Failed to read speaker-attributed.txt: {exc}")
+                print(f"    [CategorizeStage] Failed to read speaker-attributed.txt: {exc}")
 
         summary = context.data.get("summary")
         if isinstance(summary, str) and summary.strip():
@@ -292,7 +292,7 @@ class CategorizeLLMStage(BaseStage):
                 if contents:
                     return self._strip_think_tags(contents)
             except Exception as exc:
-                print(f"[CategorizeStage] Failed to read summary.txt: {exc}")
+                print(f"    [CategorizeStage] Failed to read summary.txt: {exc}")
 
         stt_segments = context.data.get("stt") or []
         collected: list[str] = []
@@ -320,7 +320,7 @@ class CategorizeLLMStage(BaseStage):
                     return -1
                 return gpu_layers
             except ValueError:
-                print(f"[CategorizeStage] Invalid LLAMA_GPU_LAYERS='{env_value}'; ignoring.")
+                print(f"    [CategorizeStage] Invalid LLAMA_GPU_LAYERS='{env_value}'; ignoring.")
 
         hardware = {}
         try:

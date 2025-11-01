@@ -11,7 +11,7 @@ Run this module as a script with the path to an input audio file:
 
 .. code-block:: bash
 
-   python -m project.apps.ai.main /path/to/audio.wav
+   python -m project.apps.ai.ai_main /path/to/audio.wav
 
 The results of the run will be saved under ``/apps/ai/output/<run_id>`` in
 the project root and a summary will be printed to stdout.
@@ -39,7 +39,7 @@ from .pipeline.stages import (
 )
 
 
-def main(argv: list[str] | None = None) -> None:
+def ai_main(argv: list[str] | None = None) -> None:
     # 1) Project root & config path
     project_root = Path(__file__).resolve().parents[2]
     config_path = project_root / "apps" / "ai" / "ai.config.json"
@@ -95,6 +95,10 @@ def main(argv: list[str] | None = None) -> None:
         print("Pipeline completed, but no summary was produced.")
 
 
+# 외부 import 시 자동 실행 방지
 if __name__ == "__main__":
-    main()
+    import sys
+    ai_main(sys.argv[1:])
 
+def run_ai_pipeline(file_path: str):
+    ai_main([file_path])

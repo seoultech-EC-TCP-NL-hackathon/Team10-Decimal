@@ -83,7 +83,7 @@ class RefineLLMStage(BaseStage):
         context.data["summary_source"] = source
         self._save_summary_file(context, summary)
 
-        print(f"[RefineStage] Generated summary ({source}) with length {len(summary)} characters.")
+        print(f"    [RefineStage] Generated summary ({source}) with length {len(summary)} characters.")
 
         return StageResult(name=self.name, success=True, data=summary, message=message)
 
@@ -104,7 +104,7 @@ class RefineLLMStage(BaseStage):
                 if contents:
                     return self._strip_think_tags(contents)
             except Exception as exc:
-                print(f"[RefineStage] Failed to read speaker-attributed.txt: {exc}")
+                print(f"    [RefineStage] Failed to read speaker-attributed.txt: {exc}")
 
         summary = context.data.get("summary")
         if isinstance(summary, str) and summary.strip():
@@ -117,7 +117,7 @@ class RefineLLMStage(BaseStage):
                 if contents:
                     return self._strip_think_tags(contents)
             except Exception as exc:
-                print(f"[RefineStage] Failed to read summary.txt: {exc}")
+                print(f"    [RefineStage] Failed to read summary.txt: {exc}")
 
         # Fallback to merged transcript data.
         segments = self._collect_segments(context)
@@ -167,7 +167,7 @@ class RefineLLMStage(BaseStage):
         try:
             from llama_cpp import Llama  # type: ignore
         except ImportError:
-            print("[RefineStage] llama_cpp is not installed.")
+            print("    [RefineStage] llama_cpp is not installed.")
             return None
 
         gpu_layers = self._determine_gpu_layers(context)
@@ -181,17 +181,17 @@ class RefineLLMStage(BaseStage):
         try:
             llama = Llama(n_gpu_layers=gpu_layers, **init_kwargs)
             offload_note = "GPU" if gpu_layers != 0 else "CPU"
-            print(f"[RefineStage] Loaded llama.cpp model '{model_path.name}' on {offload_note}.")
+            print(f"    [RefineStage] Loaded llama.cpp model '{model_path.name}' on {offload_note}.")
             return llama
         except Exception as gpu_exc:
             if gpu_layers != 0:
-                print(f"[RefineStage] GPU initialisation failed ({gpu_exc}); retrying on CPU.")
+                print(f"    [RefineStage] GPU initialisation failed ({gpu_exc}); retrying on CPU.")
             try:
                 llama = Llama(n_gpu_layers=0, **init_kwargs)
-                print(f"[RefineStage] Loaded llama.cpp model '{model_path.name}' on CPU.")
+                print(f"    [RefineStage] Loaded llama.cpp model '{model_path.name}' on CPU.")
                 return llama
             except Exception as cpu_exc:
-                print(f"[RefineStage] Failed to load llama.cpp model on CPU: {cpu_exc}")
+                print(f"    [RefineStage] Failed to load llama.cpp model on CPU: {cpu_exc}")
                 return None
 
     def _summarise_with_llm(
@@ -223,7 +223,7 @@ class RefineLLMStage(BaseStage):
             )
             content = (response["choices"][0]["message"]["content"] or "").strip()
         except Exception as exc:
-            print(f"[RefineStage] LLM summary generation failed: {exc}")
+            print(f"    [RefineStage] LLM summary generation failed: {exc}")
             return ""
 
         return self._strip_think_tags(content)
@@ -238,9 +238,9 @@ class RefineLLMStage(BaseStage):
             if prompt:
                 return prompt
         except FileNotFoundError:
-            print(f"[RefineStage] Prompt file not found: {prompt_path}")
+            print(f"    [RefineStage] Prompt file not found: {prompt_path}")
         except Exception as exc:
-            print(f"[RefineStage] Failed to read prompt file '{prompt_path}': {exc}")
+            print(f"    [RefineStage] Failed to read prompt file '{prompt_path}': {exc}")
         return _DEFAULT_PROMPTS.get(document_type, _DEFAULT_PROMPTS[_DEFAULT_DOCUMENT_TYPE])
 
     def _resolve_model_path(
@@ -254,7 +254,7 @@ class RefineLLMStage(BaseStage):
         selected = context.config.selected_models
         repo_id = selected.get(repo_key)
         if not repo_id:
-            print("[RefineStage] No refinement model configured.")
+            print("    [RefineStage] No refinement model configured.")
             return None
 
         allow_patterns = self._as_patterns(selected.get(pattern_key))
@@ -262,7 +262,7 @@ class RefineLLMStage(BaseStage):
         try:
             from huggingface_hub import snapshot_download
         except ImportError:
-            print("[RefineStage] huggingface_hub is not installed; cannot resolve model.")
+            print("    [RefineStage] huggingface_hub is not installed; cannot resolve model.")
             return None
 
         cache_dir: Optional[Path] = None
@@ -275,7 +275,7 @@ class RefineLLMStage(BaseStage):
                 )
             )
         except Exception as exc:
-            print(f"[RefineStage] Local cache lookup failed ({exc}); attempting download.")
+            print(f"    [RefineStage] Local cache lookup failed ({exc}); attempting download.")
             try:
                 cache_dir = Path(
                     snapshot_download(
@@ -284,7 +284,7 @@ class RefineLLMStage(BaseStage):
                     )
                 )
             except Exception as download_exc:
-                print(f"[RefineStage] Unable to download refinement model: {download_exc}")
+                print(f"    [RefineStage] Unable to download refinement model: {download_exc}")
                 return None
 
         if cache_dir is None:
@@ -292,7 +292,7 @@ class RefineLLMStage(BaseStage):
 
         model_path = self._select_model_file(cache_dir, allow_patterns)
         if model_path is None:
-            print(f"[RefineStage] No GGUF model file found under '{cache_dir}'.")
+            print(f"    [RefineStage] No GGUF model file found under '{cache_dir}'.")
         return model_path
 
     def _select_model_file(self, cache_dir: Path, allow_patterns: Optional[Sequence[str]]) -> Optional[Path]:
@@ -322,7 +322,7 @@ class RefineLLMStage(BaseStage):
             clean = self._strip_think_tags(summary)
             (context.base_dir / "summary.txt").write_text(clean, encoding="utf-8")
         except Exception as exc:
-            print(f"[RefineStage] Failed to write summary.txt: {exc}")
+            print(f"    [RefineStage] Failed to write summary.txt: {exc}")
 
     @staticmethod
     def _as_patterns(value: Any) -> Optional[list[str]]:
@@ -351,7 +351,7 @@ class RefineLLMStage(BaseStage):
                     return -1
                 return gpu_layers
             except ValueError:
-                print(f"[RefineStage] Invalid LLAMA_GPU_LAYERS='{env_value}'; ignoring.")
+                print(f"    [RefineStage] Invalid LLAMA_GPU_LAYERS='{env_value}'; ignoring.")
 
         hardware = {}
         try:
@@ -369,7 +369,7 @@ class RefineLLMStage(BaseStage):
                 return -1
         except Exception as e:
             # Ignore all exceptions here; fallback to CPU if GPU detection fails.
-            print(f"[RefineStage] Exception while checking for CUDA GPU: {e}")
+            print(f"    [RefineStage] Exception while checking for CUDA GPU: {e}")
 
         # Attempt full offload; loader will fall back to CPU if GPU loading fails.
         return -1
