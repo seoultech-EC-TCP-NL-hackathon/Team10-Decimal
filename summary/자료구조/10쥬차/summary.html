@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자료구조 - 10쥬차</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1e1e1e;
+            color: #cccccc;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: #252526;
+            padding: 20px;
+            border-bottom: 1px solid #3e3e42;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .meta-info {
+            color: #858585;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #252526;
+            border-bottom: 1px solid #3e3e42;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: #cccccc;
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .tab:hover {
+            background: #2a2d2e;
+            color: #ffffff;
+        }
+        
+        .tab.active {
+            color: #4fc3f7;
+            border-bottom-color: #4fc3f7;
+        }
+        
+        .tab-content {
+            display: none;
+            background: #252526;
+            padding: 30px;
+            border-radius: 4px;
+            min-height: 400px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* 요약본 스타일 */
+        .tab-content h1, .tab-content h2, .tab-content h3 {
+            color: #ffffff;
+            margin: 20px 0 10px 0;
+        }
+        
+        .tab-content h2 {
+            font-size: 20px;
+            border-bottom: 1px solid #3e3e42;
+            padding-bottom: 8px;
+        }
+        
+        .tab-content h3 {
+            font-size: 18px;
+        }
+        
+        .tab-content p {
+            margin: 10px 0;
+            line-height: 1.8;
+        }
+        
+        .tab-content ul, .tab-content ol {
+            margin: 10px 0 10px 20px;
+        }
+        
+        .tab-content li {
+            margin: 5px 0;
+        }
+        
+        .tab-content code {
+            background: #1e1e1e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #ce9178;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .tab-content pre {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .tab-content blockquote {
+            border-left: 3px solid #4fc3f7;
+            padding-left: 15px;
+            margin: 15px 0;
+            color: #a0a0a0;
+        }
+        
+        /* 화자 구분 스타일 */
+        .speaker-entry {
+            margin: 20px 0;
+            padding: 15px;
+            background: #1e1e1e;
+            border-radius: 4px;
+            border-left: 3px solid #4fc3f7;
+        }
+        
+        .speaker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .speaker-name {
+            font-weight: 600;
+            color: #4fc3f7;
+            font-size: 14px;
+        }
+        
+        .timestamp {
+            color: #858585;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .speaker-text {
+            color: #cccccc;
+            line-height: 1.8;
+        }
+        
+        /* 오디오 플레이어 스타일 */
+        audio {
+            width: 100%;
+            margin: 20px 0;
+            outline: none;
+        }
+        
+        .audio-info {
+            color: #858585;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>자료구조 - 10쥬차</h1>
+            <div class="meta-info">
+                생성일: 2025. 11. 1. 오후 11:27:34 | 
+                파일: recording_1762007252497.webm
+            </div>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(0)">📄 요약본</button>
+            <button class="tab" onclick="switchTab(1)">👥 화자 구분</button>
+            <button class="tab" onclick="switchTab(2)">🎵 오디오</button>
+        </div>
+        
+        <div class="tab-content active" id="tab-0">
+            <h1>10쥬차 강의 요약 (Mock)</h1>
+<h2>📚 주요 내용</h2>
+<p>이것은 테스트용 Mock 데이터입니다.</p>
+<h3>핵심 개념</h3>
+<ul>
+<li>개념 1: 자료구조의 기본 개념</li>
+<li>개념 2: 배열과 리스트의 차이</li>
+<li>개념 3: 시간 복잡도 분석</li>
+</ul>
+<h2>💡 중요 포인트</h2>
+<p>강의에서 다룬 핵심 내용들입니다.</p>
+<ul>
+<li>배열은 고정 크기, 리스트는 동적 크기</li>
+<li>Big-O 표기법 이해하기</li>
+<li>실습 과제 주의사항</li>
+</ul>
+<h2>📝 요약</h2>
+<p>백엔드 서버가 실행되지 않았습니다. 실제 요약을 생성하려면:</p>
+<ol>
+<li><code>cd /Users/max/Desktop/Team10-Decimal/apps/api</code></li>
+<li><code>pip install fastapi uvicorn sqlalchemy</code></li>
+<li><code>uvicorn main:app --reload --port 8000</code></li>
+</ol>
+<p>그 후 <code>API_CONFIG.useMockMode = false</code>로 설정하세요.</p>
+
+        </div>
+        
+        <div class="tab-content" id="tab-1">
+            
+            <div class="speaker-entry">
+                <div class="speaker-header">
+                    <span class="speaker-name">Speaker 1</span>
+                    <span class="timestamp">00:00 - 00:05</span>
+                </div>
+                <div class="speaker-text">안녕하세요, 오늘은 자료구조의 기본 개념에 대해 알아보겠습니다.</div>
+            </div>
+        
+            <div class="speaker-entry">
+                <div class="speaker-header">
+                    <span class="speaker-name">Speaker 1</span>
+                    <span class="timestamp">00:05 - 00:12</span>
+                </div>
+                <div class="speaker-text">먼저 배열과 리스트의 차이점부터 살펴보죠. 배열은 고정된 크기를 가지고 있습니다.</div>
+            </div>
+        
+            <div class="speaker-entry">
+                <div class="speaker-header">
+                    <span class="speaker-name">Speaker 2</span>
+                    <span class="timestamp">00:13 - 00:18</span>
+                </div>
+                <div class="speaker-text">질문 있습니다. 그럼 배열은 크기를 변경할 수 없나요?</div>
+            </div>
+        
+            <div class="speaker-entry">
+                <div class="speaker-header">
+                    <span class="speaker-name">Speaker 1</span>
+                    <span class="timestamp">00:19 - 00:25</span>
+                </div>
+                <div class="speaker-text">맞습니다. 배열은 생성 시 정한 크기를 변경할 수 없어요. 반면 리스트는 동적으로 크기가 조절됩니다.</div>
+            </div>
+        
+            <div class="speaker-entry">
+                <div class="speaker-header">
+                    <span class="speaker-name">Speaker 1</span>
+                    <span class="timestamp">00:26 - 00:33</span>
+                </div>
+                <div class="speaker-text">다음으로 시간 복잡도에 대해 알아볼까요? Big-O 표기법을 사용해서 알고리즘의 효율성을 나타냅니다.</div>
+            </div>
+        
+        </div>
+        
+        <div class="tab-content" id="tab-2">
+            <audio controls src="./recording_1762007252497.webm">
+                Your browser does not support the audio element.
+            </audio>
+            <div class="audio-info">
+                파일명: recording_1762007252497.webm<br>
+                크기: 0.01 MB
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function switchTab(index) {
+            // 모든 탭과 컨텐츠 비활성화
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭과 컨텐츠 활성화
+            tabs[index].classList.add('active');
+            document.getElementById('tab-' + index).classList.add('active');
+        }
+    </script>
+</body>
+</html>

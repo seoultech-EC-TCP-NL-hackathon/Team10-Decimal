@@ -6,6 +6,7 @@
     <title>강의 녹음 요약 AI</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body> 
     <!-- 사이드바 -->
@@ -19,12 +20,15 @@
             <div class="sidebar-tab active" data-panel="summaries" title="요약 기록">
                 <i class="fas fa-history"></i>
             </div>
+            <div class="sidebar-tab" data-panel="directories" title="로컬 디렉토리">
+                <i class="fas fa-folder"></i>
+            </div>
         </div>
 
         <!-- 사이드바 패널들 -->
         <div class="sidebar-panels">
             <!-- 요약 기록 패널 -->
-            <div class="sidebar-panel" id="summaries-panel">
+            <div class="sidebar-panel active" id="summaries-panel">
                 <div class="panel-header">
                     <h3>요약 기록</h3>
                     <div class="panel-controls">
@@ -37,27 +41,38 @@
                     </div>
                 </div>
                 <div class="panel-content">
-                    <!-- 프로젝트: 위쪽 -->
-                    <div class="projects-section">
-                        <div class="projects-header">
-                            <h4>프로젝트</h4>
-                            <div class="panel-controls">
-                                <button class="control-btn" onclick="createProjectFolder()" title="새 폴더">
-                                    <i class="fas fa-folder-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="file-tree" id="projectsList">
-                            <!-- 프로젝트 폴더/항목이 렌더링됩니다 -->
-                        </div>
+                    <div class="summaries-list" id="summariesList">
+                        <!-- 최신순 요약들이 여기 표시됩니다 -->
                     </div>
-                    <hr class="separator">
-                    <!-- 요약본: 아래쪽 (폴더에 속하지 않은 ‘미지정’만 표시) -->
-                    <div class="summaries-section">
-                        <h4 class="summaries-header">요약본</h4>
-                        <div class="summaries-list" id="summariesList">
-                            <!-- 미지정 요약들이 여기 표시됩니다 -->
-                        </div>
+                </div>
+            </div>
+
+            <!-- 로컬 디렉토리 패널 -->
+            <div class="sidebar-panel" id="directories-panel">
+                <div class="panel-header">
+                    <h3>로컬 디렉토리</h3>
+                    <div class="panel-controls">
+                        <button class="control-btn" onclick="openLocalFolder()" title="폴더 열기">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                        <button class="control-btn" onclick="createNewFolderFromButton()" title="새 폴더" id="newFolderBtn" style="display: none;">
+                            <i class="fas fa-folder-plus"></i>
+                        </button>
+                        <button class="control-btn" onclick="refreshDirectories()" title="새로고침">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="directory-empty" id="directoryEmpty">
+                        <i class="fas fa-folder-open" style="font-size: 48px; color: #666; margin-bottom: 16px;"></i>
+                        <p style="color: #999; margin-bottom: 16px;">로컬 폴더를 선택하세요</p>
+                        <button class="control-btn" onclick="openLocalFolder()" style="padding: 8px 16px;">
+                            <i class="fas fa-folder-open"></i> 폴더 열기
+                        </button>
+                    </div>
+                    <div class="directory-tree" id="directoryTree" style="display: none;">
+                        <!-- 실제 로컬 폴더 구조가 여기 표시됩니다 -->
                     </div>
                 </div>
             </div>
@@ -139,10 +154,10 @@
                 <div class="modal-header">
                     <h3 id="modalTitle">실시간 녹음</h3>
                     <div class="modal-header-actions">
-                        <button class="minimize-btn" onclick="minimizeRecordingModal()" title="최소화">
+                        <button type="button" class="minimize-btn" onclick="minimizeRecordingModal()" title="최소화">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <button class="close-btn" onclick="closeRecordingModal()">
+                        <button type="button" class="close-btn" onclick="closeRecordingModal()">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
@@ -152,7 +167,7 @@
                     <div class="recording-controls" id="recordingControls">
                         <div class="recording-section">
                             <div class="recording-controls-initial">
-                                <button class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
+                                <button type="button" class="record-btn primary" id="recordBtn" onclick="toggleRecording()">
                                     <i class="fas fa-microphone"></i>
                                     <span>녹음 시작</span>
                                 </button>
@@ -182,6 +197,42 @@
                         </div>
                     </div>
 
+                    <!-- 폴더 선택 섹션 -->
+                    <div class="folder-selection-section">
+                        <div class="folder-selection-header">
+                            <i class="fas fa-folder-tree"></i>
+                            <span>저장 위치 선택</span>
+                        </div>
+                        
+                        <!-- Workspace 선택 -->
+                        <div class="folder-input-group">
+                            <label for="workspaceSelect">
+                                <i class="fas fa-briefcase"></i> Workspace
+                            </label>
+                            <div class="folder-input-row">
+                                <select id="workspaceSelect">
+                                    <option value="">-- Workspace 선택 또는 생성 --</option>
+                                </select>
+                                <button type="button" class="folder-new-btn" onclick="createNewWorkspace(event)" title="새 Workspace">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Subject 입력 -->
+                        <div class="folder-input-group">
+                            <label for="subjectInput">
+                                <i class="fas fa-book"></i> Subject (새로 생성)
+                            </label>
+                            <input type="text" id="subjectInput" placeholder="예: 1주차, 2주차..." disabled>
+                        </div>
+
+                        <div class="folder-selection-hint">
+                            <i class="fas fa-info-circle"></i>
+                            <span>summary/<strong class="workspace-preview">workspace</strong>/<strong class="subject-preview">subject</strong></span>
+                        </div>
+                    </div>
+
                     <!-- 처리 버튼 -->
                     <div class="modal-actions">
                         <label class="lang-flag">
@@ -189,12 +240,12 @@
                             한국어로 이루어진 파일입니다.
                         </label>
 
-                        <button class="summarize-btn" id="summarizeBtn" onclick="summarizeAudio()" disabled>
+                        <button type="button" class="summarize-btn" id="summarizeBtn" onclick="summarizeAudio(event)" disabled>
                             <i class="fas fa-magic"></i>
                             <span>요약 생성</span>
                         </button>
                         
-                        <button class="cancel-btn" onclick="closeRecordingModal()">
+                        <button type="button" class="cancel-btn" onclick="closeRecordingModal()">
                             <span>취소</span>
                         </button>
                     </div>
@@ -221,6 +272,22 @@
                     <span class="minibar-timer" id="minibarTimer">00:00</span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 컨텍스트 메뉴 -->
+    <div class="context-menu" id="contextMenu" style="display: none;">
+        <div class="context-menu-item" onclick="createNewFolderInLocal()">
+            <i class="fas fa-folder-plus"></i>
+            <span>새 폴더</span>
+        </div>
+        <div class="context-menu-item" onclick="selectWorkspaceFolder()">
+            <i class="fas fa-check-circle"></i>
+            <span>Workspace/Subject 선택</span>
+        </div>
+        <div class="context-menu-item context-menu-delete" onclick="deleteFolderOrFile()">
+            <i class="fas fa-trash"></i>
+            <span>삭제</span>
         </div>
     </div>
 

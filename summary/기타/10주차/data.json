@@ -1,0 +1,25 @@
+{
+  "title": "기타 - 10주차",
+  "workspace": "기타",
+  "subject": "10주차",
+  "fileName": "recording_1762008202249.webm",
+  "timestamp": "2025. 11. 1. 오후 11:43:25",
+  "summary": "# 기타 - 10주차 최종 요약\n\n'recording_1762008202249.webm'에 대한 AI 개별 요약본입니다.",
+  "speakerSegments": [
+    {
+      "speaker": "Speaker 1",
+      "start": "0.5000",
+      "end": "4.2000",
+      "text": "안녕하세요, 오늘 강의를 시작하겠습니다."
+    },
+    {
+      "speaker": "Speaker 2",
+      "start": "5.1000",
+      "end": "9.8000",
+      "text": "네, 교수님. 지난 시간에 배운 내용에 대해 질문이 있습니다."
+    }
+  ],
+  "fileSize": 110,
+  "mimeType": "audio/webm",
+  "jobStatus": "COMPLETED"
+}

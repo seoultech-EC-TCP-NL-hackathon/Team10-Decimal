@@ -1224,6 +1224,27 @@ body {
     margin: 16px 0;
 }
 
+/* 화자 구분 트랜스크립트 스타일 */
+.speaker-transcript p {
+    margin: 1.2rem 0;
+    padding: 0.8rem;
+    background: #1e1e1e;
+    border-left: 3px solid #4ec9b0;
+    border-radius: 4px;
+}
+
+.speaker-transcript strong {
+    color: #4ec9b0;
+    font-weight: 600;
+}
+
+.speaker-transcript .timestamp {
+    color: #858585;
+    font-size: 0.85em;
+    margin-left: 8px;
+    font-family: 'Consolas', monospace;
+}
+
 /* 반응형 디자인 */
 @media (max-width: 768px) {
     body {
@@ -1296,6 +1317,106 @@ body {
 .modal-actions .lang-flag input {
     transform: scale(1.1);
     cursor: pointer;
+}
+
+/* 폴더 선택 섹션 */
+.folder-selection-section {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.folder-selection-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dcb67a;
+    font-weight: 500;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.folder-input-group {
+    margin-bottom: 12px;
+}
+
+.folder-input-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #999;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.folder-input-group label i {
+    color: #dcb67a;
+}
+
+.folder-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.folder-input-row select,
+.folder-input-group input {
+    flex: 1;
+    background: #252526;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #cccccc;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.folder-input-row select:focus,
+.folder-input-group input:focus {
+    outline: none;
+    border-color: #007acc;
+}
+
+.folder-input-group input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.folder-new-btn {
+    background: #0e639c;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.folder-new-btn:hover {
+    background: #1177bb;
+}
+
+.folder-selection-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: #2d2d30;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #999;
+}
+
+.folder-selection-hint i {
+    color: #4ec9b0;
+}
+
+.workspace-preview,
+.subject-preview {
+    color: #4ec9b0;
+    font-family: 'Consolas', monospace;
 }
 
 /* 요약 결과 스타일링 */
@@ -1922,4 +2043,150 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+/* 디렉토리 트리 스타일 */
+.directory-tree {
+    padding: 8px;
+    overflow-y: auto;
+}
+
+.dir-node {
+    margin: 2px 0;
+}
+
+.dir-node-content {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    color: #cccccc;
+    user-select: none;
+}
+
+.dir-node-content:hover {
+    background-color: #2a2d2e;
+}
+
+.dir-arrow {
+    width: 16px;
+    height: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+    color: #8c8c8c;
+    transition: transform 0.2s ease;
+}
+
+.dir-node.expanded > .dir-node-content .dir-arrow {
+    transform: rotate(90deg);
+}
+
+.dir-node-content i.fa-folder {
+    margin-right: 6px;
+    color: #dcb67a;
+    font-size: 14px;
+}
+
+.dir-node-content i.fa-file-alt {
+    margin-right: 6px;
+    color: #519aba;
+    font-size: 12px;
+}
+
+.dir-children {
+    margin-left: 20px;
+    display: none;
+}
+
+.dir-node.expanded > .dir-children {
+    display: block;
+}
+
+/* 컨텍스트 메뉴 */
+.context-menu {
+    position: fixed;
+    background-color: #252526;
+    border: 1px solid #454545;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 10000;
+    min-width: 200px;
+    padding: 4px 0;
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #cccccc;
+    transition: background-color 0.2s ease;
+}
+
+.context-menu-item:hover {
+    background-color: #2a2d2e;
+}
+
+.context-menu-item i {
+    margin-right: 10px;
+    width: 16px;
+    color: #dcb67a;
+}
+
+.context-menu-delete {
+    color: #f48771;
+}
+
+.context-menu-delete:hover {
+    background-color: #5a1d1d;
+}
+
+.context-menu-delete i {
+    color: #f48771;
+}
+
+/* 디렉토리 빈 상태 */
+.directory-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.directory-empty button {
+    background: #007acc;
+    color: white;
+    border-radius: 4px;
+}
+
+.directory-empty button:hover {
+    background: #005a9e;
+}
+
+/* 선택된 작업 폴더 표시 */
+.dir-node.workspace-folder > .dir-node-content {
+    background-color: rgba(0, 122, 204, 0.15);
+    border-left: 3px solid #007acc;
+}
+
+.dir-node.workspace-folder > .dir-node-content i.fa-folder {
+    color: #007acc;
+}
+
+/* 선택된 subject 폴더 표시 */
+.dir-node.subject-folder > .dir-node-content {
+    background-color: rgba(76, 175, 80, 0.15);
+    border-left: 3px solid #4caf50;
+}
+
+.dir-node.subject-folder > .dir-node-content i.fa-folder {
+    color: #4caf50;
 }
