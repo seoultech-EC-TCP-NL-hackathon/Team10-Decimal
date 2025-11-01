@@ -2290,6 +2290,7 @@ function showResult(tabId, type) {
             
         case 'plain':
             btns[2].classList.add('active');
+            console.log('🎵 오디오 탭:', { audioUrl: summary?.audioUrl, fileName: summary?.fileName });
             if (summary?.audioUrl) {
                 const niceSize = summary.fileSize ? ` (${(summary.fileSize/1024/1024).toFixed(1)} MB)` : '';
                 output.innerHTML = `
@@ -2303,6 +2304,7 @@ function showResult(tabId, type) {
                     </div>
                 `;
             } else {
+                console.warn('⚠️ audioUrl 없음');
                 output.innerHTML = `
                     <div class="audio-missing">
                         <i class="fas fa-info-circle"></i>
@@ -3110,6 +3112,7 @@ async function sendTranscriptionRequest(opts = {}) {
     const fd = new FormData();
     fd.append('files', file, file.name);
     fd.append('title', `${workspace} - ${subject}`);  // 백엔드는 title을 받음
+    fd.append('korean_only', koreanOnly ? 'true' : 'false');  // 한국어 특화 여부 전송
     // workspace와 subject를 별도로 전달하려면 백엔드 API 수정 필요
 
     // 🔍 보낼 데이터 로그 출력
@@ -3117,6 +3120,7 @@ async function sendTranscriptionRequest(opts = {}) {
         url,
         title: fd.get('title'),
         files: fd.get('files'),
+        korean_only: fd.get('korean_only'),
         workspace,
         subject,
         koreanOnly

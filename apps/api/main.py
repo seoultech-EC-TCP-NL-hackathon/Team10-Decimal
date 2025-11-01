@@ -302,8 +302,7 @@ async def create_summary_job_with_files(
     background_tasks: BackgroundTasks,
     title: str = Form(...),
     subject_id: Optional[int] = Form(None),
-    #  is_korean_only 파라미터 여기서 삭제
-    # is_korean_only: bool = Form(False),
+    korean_only: bool = Form(False),  # 한국어 특화 파라미터 활성화
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
@@ -313,11 +312,14 @@ async def create_summary_job_with_files(
     print(f"{'='*60}")
     print(f"  title: '{title}'")
     print(f"  subject_id: {subject_id}")
+    print(f"  korean_only: {korean_only}")
     print(f"  files: {[f.filename for f in files]}")
-    
+
     # title에서 workspace와 subject 분리 (title 형식: "workspace - subject")
-    if ' - ' in title:
-        parts = title.split(' - ', 1)
+    workspace_name = None
+    subject_name = None
+    if " - " in title:
+        parts = title.split(" - ", 1)
         workspace_name = parts[0]
         subject_name = parts[1]
         print(f"  ✅ Workspace: '{workspace_name}'")
@@ -325,7 +327,7 @@ async def create_summary_job_with_files(
     else:
         print(f"  ⚠️ title이 'workspace - subject' 형식이 아님")
     print(f"{'='*60}\n")
-    
+
     # --- 입력 검증 로직 ---
     if len(files) != MAX_FILES:
         raise HTTPException(
@@ -358,9 +360,47 @@ async def create_summary_job_with_files(
                 status_code=400,
                 detail=f"Invalid subject_id: {subject_id}. Subject not found.",
             )
+    else:
+        # subject_id가 없으면 title에서 파싱하여 자동 생성
+        if workspace_name and subject_name:
+            # Workspace 찾기 또는 생성
+            workspace = (
+                db.query(models.Workspace)
+                .filter(models.Workspace.name == workspace_name)
+                .first()
+            )
+            if not workspace:
+                workspace = models.Workspace(name=workspace_name)
+                db.add(workspace)
+                db.commit()
+                db.refresh(workspace)
+                print(f"✅ Workspace 생성됨: '{workspace_name}' (ID: {workspace.id})")
+
+            # Subject 찾기 또는 생성 (is_korean_only 값 포함)
+            subject = (
+                db.query(models.Subject)
+                .filter(
+                    models.Subject.name == subject_name,
+                    models.Subject.workspace_id == workspace.id,
+                )
+                .first()
+            )
+            if not subject:
+                subject = models.Subject(
+                    name=subject_name,
+                    workspace_id=workspace.id,
+                    is_korean_only=korean_only,  # 한국어 특화 값 저장
+                )
+                db.add(subject)
+                db.commit()
+                db.refresh(subject)
+                print(
+                    f"✅ Subject 생성됨: '{subject_name}' (ID: {subject.id}, Korean Only: {korean_only})"
+                )
+
+            subject_id = subject.id
 
     # --- 검증 통과 후 로직 ---
-    #  is_korean_only 값 없이 SummaryJob 생성
     summary_job = models.SummaryJob(title=title, subject_id=subject_id)
     db.add(summary_job)
     db.commit()
