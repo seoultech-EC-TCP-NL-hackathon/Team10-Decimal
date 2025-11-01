@@ -295,3 +295,9 @@ apps/projects/*
 
 ## ===== config 파일 =====
 apps/ai/ai.config.json
+
+# uploads 폴더 안의 모든 내용을 무시
+uploads/*
+
+# 하지만 폴더 구조 유지를 위한 .gitkeep 파일은 무시하지 않습니다
+!uploads/.gitkeep
