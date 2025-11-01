@@ -337,6 +337,7 @@ class CategorizeLLMStage(BaseStage):
             if getattr(torch, "cuda", None) and torch.cuda.is_available():
                 return -1
         except Exception:
+            # Ignore all exceptions here: torch may not be installed, or CUDA may not be available.
             pass
 
         # Attempt full offload; loader will fall back to CPU if the GPU path fails.
