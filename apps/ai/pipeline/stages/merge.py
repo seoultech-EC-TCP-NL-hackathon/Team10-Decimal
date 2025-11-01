@@ -25,12 +25,12 @@ class MergeStage(BaseStage):
         diarisation: List[Dict[str, Any]] = list(context.data.get("diarization") or [])
         chunks: Iterable[AudioChunk] = context.data.get("chunks") or []
 
-        print(f"[MergeStage] Merging {len(transcripts)} transcript segment(s) with {len(diarisation)} diarisation turn(s).")
+        print(f"    [MergeStage] Merging {len(transcripts)} transcript segment(s) with {len(diarisation)} diarisation turn(s).")
 
         if not transcripts:
             context.data["merged_transcript"] = []
             message = "No transcripts available to merge."
-            print("[MergeStage] No transcripts to merge; skipping speaker alignment.")
+            print("    [MergeStage] No transcripts to merge; skipping speaker alignment.")
             return StageResult(name=self.name, success=True, data={"segments": [], "speakers": {}}, message=message)
 
         segments: List[Dict[str, Any]] = []
@@ -50,7 +50,7 @@ class MergeStage(BaseStage):
 
         speaker_index = self._speaker_index(segments)
         context.data["speaker_index"] = speaker_index
-        print(f"[MergeStage] Produced {len(segments)} merged segment(s) across {len(speaker_index)} speaker(s).")
+        print(f"    [MergeStage] Produced {len(segments)} merged segment(s) across {len(speaker_index)} speaker(s).")
         message = None if diarisation else "Diarisation unavailable; speaker labels default to 'UNKNOWN'."
 
         return StageResult(
@@ -246,7 +246,7 @@ class MergeStage(BaseStage):
             context.base_dir.mkdir(parents=True, exist_ok=True)
             (context.base_dir / "speaker-attributed.txt").write_text(text, encoding="utf-8")
         except Exception as exc:
-            print(f"[MergeStage] Failed to write speaker-attributed.txt: {exc}")
+            print(f"    [MergeStage] Failed to write speaker-attributed.txt: {exc}")
 
     @staticmethod
     def _segments_to_lines(segments: Sequence[Dict[str, Any]]) -> List[str]:

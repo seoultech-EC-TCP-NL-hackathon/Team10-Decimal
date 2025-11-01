@@ -27,7 +27,7 @@ class DiarizeStage(BaseStage):
         chunks = context.data.get("chunks") or []
         diarization: List[Dict[str, float | str]] = []
         pipeline = context.resources.diarization_pipeline
-        print(f"[DiarizeStage] Starting diarisation over {len(chunks)} chunk(s).")
+        print(f"    [DiarizeStage] Starting diarisation over {len(chunks)} chunk(s).")
         if pipeline is None:
             # Fallback: assign single speaker per chunk
             speaker_id = 0
@@ -39,12 +39,12 @@ class DiarizeStage(BaseStage):
                 })
                 speaker_id += 1
             context.data["diarization"] = diarization
-            print("[DiarizeStage] No diarisation pipeline available. Generated placeholder speaker turns.")
+            print("    [DiarizeStage] No diarisation pipeline available. Generated placeholder speaker turns.")
             return StageResult(name=self.name, success=True, data=diarization)
         # Use real diarisation pipeline
         try:
             for chunk in chunks:
-                print(f"[DiarizeStage] Processing chunk {chunk.id} ({chunk.file_path.name}).")
+                print(f"    [DiarizeStage] Processing chunk {chunk.id} ({chunk.file_path.name}).")
                 data, sr = sf.read(chunk.file_path, always_2d=True)
                 waveform = torch.from_numpy(data.T).float().contiguous()
                 diar_output = pipeline({"waveform": waveform, "sample_rate": sr, "uri": chunk.id})
@@ -52,7 +52,7 @@ class DiarizeStage(BaseStage):
                 annotation = None
                 if hasattr(diar_output, "exclusive_speaker_diarization"):
                     annotation = diar_output.exclusive_speaker_diarization
-                    print(f"[DiarizeStage] Using exclusive diarization for chunk {chunk.id}.")
+                    print(f"    [DiarizeStage] Using exclusive diarization for chunk {chunk.id}.")
                 elif hasattr(diar_output, "speaker_diarization"):
                     annotation = diar_output.speaker_diarization
                 elif hasattr(diar_output, "itertracks"):
@@ -88,7 +88,7 @@ class DiarizeStage(BaseStage):
                 )
 
             context.data["diarization"] = diarization
-            print(f"[DiarizeStage] Completed diarisation with {len(diarization)} speaker turns.")
+            print(f"    [DiarizeStage] Completed diarisation with {len(diarization)} speaker turns.")
             return StageResult(name=self.name, success=True, data=diarization)
         except Exception as e:
             # On failure, fallback to single label but continue the pipeline.
@@ -102,7 +102,7 @@ class DiarizeStage(BaseStage):
                 })
                 speaker_id += 1
             context.data["diarization"] = fallback
-            print(f"[DiarizeStage] Diarisation failed; fallback to default speakers. Error: {e}")
+            print(f"    [DiarizeStage] Diarisation failed; fallback to default speakers. Error: {e}")
             return StageResult(
                 name=self.name,
                 success=True,
