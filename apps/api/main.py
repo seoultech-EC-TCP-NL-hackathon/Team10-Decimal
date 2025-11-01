@@ -19,8 +19,9 @@ from .database import SessionLocal, engine
 
 # --- 설정 (Configurations) ---
 models.Base.metadata.create_all(bind=engine)
-PROJECTS_BASE_DIR = Path(__file__).parent.parent / "projects"
-AI_OUTPUT_DIR = Path(__file__).parent.parent / "ai" / "output"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECTS_BASE_DIR = PROJECT_ROOT / "apps" / "projects"
+AI_OUTPUT_DIR = PROJECT_ROOT / "apps" / "ai" / "output"
 ALLOWED_EXTENSIONS = {".mp3", ".aac", ".m4a", ".wav",".flac",".ogg",".opus",".webm"}
 MAX_FILES = 10
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024 * 1024 # 10GB
@@ -473,4 +474,5 @@ def delete_summary_job(job_id: int, db: Session = Depends(get_db)):
             
     db.delete(job)
     db.commit()
+
     return JSONResponse(content={"message": f"Job {job_id} and associated files deleted successfully."})
