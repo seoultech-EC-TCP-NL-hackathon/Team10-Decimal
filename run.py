@@ -187,7 +187,7 @@ def create_env_if_missing(env_path: Path, default_port: int) -> None:
         "PGUSER=app_user",
         "PGPASSWORD=app_password",
         "PGDATABASE=app_db",
-        "DB_URL=postgresql://app_user:app_password@127.0.0.1:5432/app_db",
+        "DB_URL=postgresql+psycopg2://app_user:app_password@127.0.0.1:5432/app_db",
         "POSTGRES_PASSWORD=admin1234",
         "HUGGINGFACE_TOKEN=",
         f"API_KEY={api_key}",
